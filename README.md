@@ -1,186 +1,145 @@
 # n8n Execution Feedback System
 
-A FastAPI + React application for collecting and storing feedback on n8n execution results, including LinkedIn content, X content, and image generation feedback.
+A modern, full-stack application for collecting and managing feedback for n8n execution results. Built with FastAPI backend and React frontend with a beautiful, minimalist design.
 
-## 🚀 Quick Start with Docker
+## Features
 
-The easiest way to run this application is using Docker Compose:
+### Backend (FastAPI)
+- **POST** `/api/feedback` - Create new feedback submissions
+- **GET** `/api/feedback/{submission_id}` - Retrieve specific feedback by ID
+- **GET** `/api/feedback` - List all feedback submissions with pagination
+- **GET** `/api/feedback/execution/{execution_id}` - Get feedback by n8n execution ID
+- **PUT** `/api/feedback/{submission_id}` - Update existing feedback submissions
+- **Health check** endpoints for monitoring
 
-```bash
-# Clone the repository
-git clone <repository-url>
-cd n8n_automate
+### Frontend (React)
+- **Modern, minimalist design** with shadcn-style aesthetics
+- **Tabbed interface** for better organization (LinkedIn, X/Twitter, Images)
+- **Pre-filled content** for easy review and feedback
+- **Edit mode** - Load and update existing feedback
+- **Create new** functionality after editing
+- **Responsive design** that works on all devices
+- **Beautiful gradients** and glass-morphism effects
+- **Smooth animations** and transitions
 
-# Start all services
-docker-compose up -d
+## Key Improvements
 
-# View logs
-docker-compose logs -f
+### PUT Endpoint
+- **Partial updates** - Only update the fields you provide
+- **Automatic timestamp** - `updated_at` field is automatically set
+- **Error handling** - Proper validation and error responses
+- **Idempotent** - Safe to call multiple times
 
-# Stop services
-docker-compose down
-```
+### Frontend Design
+- **Subtle, minimalist aesthetic** inspired by shadcn/ui
+- **Dark theme** with gradient backgrounds
+- **Glass-morphism effects** with backdrop blur
+- **Improved typography** and spacing
+- **Better form organization** with tabs
+- **Enhanced user experience** with clear visual feedback
 
-## 📁 Project Structure
-
-```
-n8n_automate/
-├── docker-compose.yml      # Docker orchestration
-├── backend/                # FastAPI backend
-│   ├── Dockerfile         # Backend container
-│   ├── app/
-│   │   ├── models.py      # Database models
-│   │   ├── schemas.py     # Pydantic schemas
-│   │   ├── database.py    # Database configuration
-│   │   └── main.py        # FastAPI application
-│   ├── requirements.txt   # Python dependencies
-│   └── alembic/           # Database migrations
-└── frontend/              # React frontend
-    ├── Dockerfile         # Frontend container
-    ├── src/
-    │   ├── App.js         # Main React component
-    │   └── index.css      # Tailwind CSS styles
-    ├── package.json       # Node dependencies
-    └── tailwind.config.js # Tailwind configuration
-```
-
-## 🎯 Features
-
-- **Docker-first setup** with PostgreSQL, FastAPI, and React containers
-- Store n8n execution feedback with unique submission IDs
-- Collect feedback for LinkedIn content (Grok, o3, Gemini)
-- Collect feedback for X content (Grok, o3, Gemini)  
-- Collect feedback for images (Stable Diffusion, Pixabay, GPT1)
-- Modern React UI with Tailwind CSS and react-icons
-- Pre-filled content from n8n executions
-- User-friendly feedback forms with dropdowns
-
-## 🐳 Docker Setup
-
-### Prerequisites
-- Docker
-- Docker Compose
-
-### Running the Application
-
-1. **Start all services:**
-   ```bash
-   docker-compose up -d
-   ```
-
-2. **Access the application:**
-   - Frontend: http://localhost:3001
-   - Backend API: http://localhost:8001
-   - API Documentation: http://localhost:8001/docs
-
-3. **View logs:**
-   ```bash
-   # All services
-   docker-compose logs -f
-   
-   # Specific service
-   docker-compose logs -f backend
-   docker-compose logs -f frontend
-   ```
-
-4. **Stop services:**
-   ```bash
-   docker-compose down
-   ```
-
-### Database Migrations
-
-To run database migrations in Docker:
-
-```bash
-# Create a new migration
-docker-compose exec backend alembic revision --autogenerate -m "Initial migration"
-
-# Apply migrations
-docker-compose exec backend alembic upgrade head
-```
-
-### Running Tests
-
-To run the comprehensive test suite:
-
-```bash
-# Run tests in Docker
-docker-compose exec backend python run_tests.py
-
-# Or run tests directly
-docker-compose exec backend pytest tests/ -v
-
-# Run specific test file
-docker-compose exec backend pytest tests/test_api.py -v
-
-# Run tests with coverage
-docker-compose exec backend pytest tests/ --cov=app --cov-report=html
-```
-
-## 🔧 Manual Setup (Alternative)
+## Quick Start
 
 ### Backend Setup
-1. Navigate to backend directory
-2. Create virtual environment: `python -m venv venv`
-3. Activate virtual environment: `venv\Scripts\activate` (Windows)
-4. Install dependencies: `pip install -r requirements.txt`
-5. Set up PostgreSQL database
-6. Run migrations: `alembic upgrade head`
-7. Start FastAPI server: `uvicorn app.main:app --reload`
-
-### Frontend Setup
-1. Navigate to frontend directory
-2. Install dependencies: `npm install`
-3. Install Tailwind CSS: `npm install -D tailwindcss autoprefixer postcss`
-4. Start development server: `npm start`
-
-## 📡 API Endpoints
-
-- `POST /api/feedback` - Submit feedback data
-- `GET /api/feedback/{submission_id}` - Get feedback by submission ID
-- `GET /api/feedback` - Get all feedback submissions
-- `GET /api/feedback/execution/{execution_id}` - Get feedback by n8n execution ID
-- `GET /health` - Health check endpoint
-
-## 🎨 UI Features
-
-- **Matte finish design** with dark background (#0c0d0f)
-- **Responsive layout** that works on all devices
-- **Pre-filled content** from n8n executions
-- **Interactive forms** with real-time validation
-- **Success/error messages** with icons
-- **Loading states** for better UX
-- **Image previews** for generated images
-
-## 🔍 Database Schema
-
-The application stores feedback data in PostgreSQL with the following structure:
-
-- **n8n_execution_id**: Links feedback to specific n8n execution
-- **LinkedIn content**: Grok, o3, and Gemini generated content
-- **X content**: Grok, o3, and Gemini generated content  
-- **Image URLs**: Stable Diffusion, Pixabay, and GPT1 image URLs
-- **User feedback**: Text feedback for each content type
-- **LLM selections**: User's preferred LLM for each content type
-- **Custom content**: User-generated custom content
-- **Timestamps**: Creation and update timestamps
-
-## 🛠️ Development
-
-### Adding New Features
-1. Update the database model in `backend/app/models.py`
-2. Create and run Alembic migrations
-3. Update Pydantic schemas in `backend/app/schemas.py`
-4. Add API endpoints in `backend/app/main.py`
-5. Update React components in `frontend/src/App.js`
-
-### Environment Variables
-Create a `.env` file in the root directory:
-```env
-DATABASE_URL=postgresql://postgres:postgres@localhost/n8n_feedback
+```bash
+cd backend
+pip install -r requirements.txt
+uvicorn app.main:app --reload
 ```
 
-## 📝 License
+### Frontend Setup
+```bash
+cd frontend
+npm install
+npm start
+```
 
-This project is licensed under the MIT License.
+### Testing the PUT Endpoint
+```bash
+python test_put_endpoint.py
+```
+
+## API Usage Examples
+
+### Create Feedback
+```bash
+curl -X POST "http://localhost:8000/api/feedback" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "n8n_execution_id": "exec-123",
+    "email": "user@example.com",
+    "linkedin_feedback": "Great content!",
+    "linkedin_chosen_llm": "Grok"
+  }'
+```
+
+### Update Feedback
+```bash
+curl -X PUT "http://localhost:8000/api/feedback/{submission_id}" \
+  -H "Content-Type: application/json" \
+  -d '{
+    "linkedin_feedback": "Updated feedback",
+    "linkedin_chosen_llm": "o3"
+  }'
+```
+
+### Get Feedback
+```bash
+curl "http://localhost:8000/api/feedback/{submission_id}"
+```
+
+## Frontend Features
+
+### Edit Mode
+1. Enter a submission ID in the "Load Existing Feedback" section
+2. Click "Load" to populate the form with existing data
+3. Make your changes
+4. Click "Update Feedback" to save changes
+
+### Create New
+- After editing, click "Create New" to start fresh
+- All pre-filled content will be restored to defaults
+
+### Tabbed Interface
+- **LinkedIn Content** - Review and provide feedback for LinkedIn posts
+- **X/Twitter Content** - Review and provide feedback for X/Twitter posts  
+- **Generated Images** - Review and provide feedback for generated images
+
+## Database Schema
+
+The system uses SQLAlchemy with automatic timestamp management:
+- `created_at` - Set automatically on creation
+- `updated_at` - Updated automatically on PUT requests
+
+## Development
+
+### Running Tests
+```bash
+cd backend
+python -m pytest tests/
+```
+
+### Database Migrations
+```bash
+cd backend
+alembic upgrade head
+```
+
+## Technologies Used
+
+- **Backend**: FastAPI, SQLAlchemy, Alembic, Pydantic
+- **Frontend**: React, Tailwind CSS, React Icons, Axios
+- **Database**: SQLite (development), PostgreSQL (production ready)
+- **Styling**: Custom Tailwind configuration with glass-morphism effects
+
+## Contributing
+
+1. Fork the repository
+2. Create a feature branch
+3. Make your changes
+4. Add tests if applicable
+5. Submit a pull request
+
+## License
+
+MIT License - see LICENSE file for details.

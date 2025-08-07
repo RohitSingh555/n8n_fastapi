@@ -1,10 +1,55 @@
-import React, { useState } from 'react';
-import { FiSend, FiCheck, FiAlertCircle, FiLinkedin, FiTwitter, FiImage } from 'react-icons/fi';
+import React, { useState, useEffect } from 'react';
+import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
+import { FiSend, FiCheck, FiAlertCircle, FiLinkedin, FiTwitter, FiImage, FiEdit3, FiPlus, FiEye, FiLock, FiUnlock } from 'react-icons/fi';
 import axios from 'axios';
 
+// Import modular components
+import Modal from './components/Modal';
+import SuccessPage from './components/SuccessPage';
+import TabContent from './components/TabContent';
+
 function App() {
-  const [formData, setFormData] = useState({
+  return (
+    <Router>
+      <Routes>
+        <Route path="/" element={<FeedbackForm />} />
+        <Route path="/feedback/:submissionId" element={<FeedbackForm />} />
+        <Route path="/feedback/:submissionId/:activeTab" element={<FeedbackForm />} />
+        <Route path="/success/:submissionId" element={<SuccessPageWrapper />} />
+      </Routes>
+    </Router>
+  );
+}
+
+function SuccessPageWrapper() {
+  const { submissionId } = useParams();
+  const navigate = useNavigate();
+  
+  const handleReset = () => {
+    navigate('/');
+  };
+  
+  const handleContinueEditing = () => {
+    navigate(`/feedback/${submissionId}`);
+  };
+  
+  return (
+    <SuccessPage 
+      submissionId={submissionId}
+      onReset={handleReset}
+      onContinueEditing={handleContinueEditing}
+    />
+  );
+}
+
+function FeedbackForm() {
+  const { submissionId: urlSubmissionId, activeTab: urlActiveTab } = useParams();
+  const navigate = useNavigate();
+  
+  // Initial prefilled state
+  const initialFormData = {
     n8n_execution_id: '',
+    email: '',
     
     // LinkedIn Content
     linkedin_grok_content: `What if AI could transform prenatal care into a lifeline for millions?
@@ -36,7 +81,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     linkedin_custom_content: '',
     
     // X Content
-    x_grok_content: 'Sample X/Twitter Grok content would appear here...',
+    x_grok_content: 'Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...',
     x_o3_content: 'Sample X/Twitter o3 content would appear here...',
     x_gemini_content: 'Sample X/Twitter Gemini content would appear here...',
     x_feedback: '',
@@ -49,10 +94,160 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     gpt1_image_url: 'https://example.com/gpt1-image.jpg',
     image_feedback: '',
     image_chosen_llm: ''
+  };
+
+  const [formData, setFormData] = useState(initialFormData);
+  const [originalFormData, setOriginalFormData] = useState(initialFormData);
+  const [loading, setLoading] = useState(false);
+  const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
+  const [isEditMode, setIsEditMode] = useState(false);
+  const [submissionId, setSubmissionId] = useState('');
+  const [activeTab, setActiveTab] = useState('linkedin');
+  const [visitedTabs, setVisitedTabs] = useState(new Set(['linkedin']));
+  const [tabValidation, setTabValidation] = useState({
+    linkedin: false,
+    twitter: false,
+    images: false
   });
 
-  const [loading, setLoading] = useState(false);
-  const [message, setMessage] = useState({ type: '', text: '' });
+  // Check if tabs have content
+  const hasLinkedInContent = () => {
+    return formData.linkedin_grok_content?.trim() || 
+           formData.linkedin_o3_content?.trim() || 
+           formData.linkedin_gemini_content?.trim();
+  };
+
+  const hasTwitterContent = () => {
+    return formData.x_grok_content?.trim() || 
+           formData.x_o3_content?.trim() || 
+           formData.x_gemini_content?.trim();
+  };
+
+  const hasImageContent = () => {
+    return formData.stable_diffusion_image_url?.trim() || 
+           formData.pixabay_image_url?.trim() || 
+           formData.gpt1_image_url?.trim();
+  };
+
+  // Get available tabs
+  const getAvailableTabs = () => {
+    const tabs = [];
+    if (hasLinkedInContent()) tabs.push('linkedin');
+    if (hasTwitterContent()) tabs.push('twitter');
+    if (hasImageContent()) tabs.push('images');
+    return tabs;
+  };
+
+  // Check if any field has been modified from its original state
+  const hasChanges = () => {
+    const editableFields = [
+      'email', 'linkedin_feedback', 'linkedin_chosen_llm', 'linkedin_custom_content',
+      'x_feedback', 'x_chosen_llm', 'x_custom_content',
+      'image_feedback', 'image_chosen_llm'
+    ];
+    
+    return editableFields.some(field => {
+      const currentValue = formData[field] || '';
+      const originalValue = originalFormData[field] || '';
+      return currentValue !== originalValue;
+    });
+  };
+
+  // Load feedback from URL if submissionId is provided
+  useEffect(() => {
+    if (urlSubmissionId && urlSubmissionId !== submissionId) {
+      loadExistingFeedback(urlSubmissionId);
+    }
+    if (urlActiveTab && ['linkedin', 'twitter', 'images'].includes(urlActiveTab)) {
+      setActiveTab(urlActiveTab);
+      setVisitedTabs(prev => new Set([...prev, urlActiveTab]));
+    }
+  }, [urlSubmissionId, urlActiveTab]);
+
+  // Auto-select LLM based on available content
+  useEffect(() => {
+    const autoSelectLLM = () => {
+      const updatedFormData = { ...formData };
+      
+      // LinkedIn auto-selection
+      if (!formData.linkedin_chosen_llm) {
+        if (formData.linkedin_grok_content?.trim()) {
+          updatedFormData.linkedin_chosen_llm = 'Grok';
+        } else if (formData.linkedin_o3_content?.trim()) {
+          updatedFormData.linkedin_chosen_llm = 'o3';
+        } else if (formData.linkedin_gemini_content?.trim()) {
+          updatedFormData.linkedin_chosen_llm = 'Gemini';
+        }
+      }
+      
+      // Twitter auto-selection
+      if (!formData.x_chosen_llm) {
+        if (formData.x_grok_content?.trim()) {
+          updatedFormData.x_chosen_llm = 'Grok';
+        } else if (formData.x_o3_content?.trim()) {
+          updatedFormData.x_chosen_llm = 'o3';
+        } else if (formData.x_gemini_content?.trim()) {
+          updatedFormData.x_chosen_llm = 'Gemini';
+        }
+      }
+      
+      // Image auto-selection
+      if (!formData.image_chosen_llm) {
+        if (formData.stable_diffusion_image_url?.trim()) {
+          updatedFormData.image_chosen_llm = 'Stable';
+        } else if (formData.pixabay_image_url?.trim()) {
+          updatedFormData.image_chosen_llm = 'Pixabay';
+        } else if (formData.gpt1_image_url?.trim()) {
+          updatedFormData.image_chosen_llm = 'GPT1';
+        }
+      }
+      
+      // Only update if there are changes
+      if (JSON.stringify(updatedFormData) !== JSON.stringify(formData)) {
+        setFormData(updatedFormData);
+      }
+    };
+    
+    autoSelectLLM();
+  }, [formData.linkedin_grok_content, formData.linkedin_o3_content, formData.linkedin_gemini_content, 
+      formData.x_grok_content, formData.x_o3_content, formData.x_gemini_content,
+      formData.stable_diffusion_image_url, formData.pixabay_image_url, formData.gpt1_image_url]);
+
+  // Update URL when tab or submissionId changes
+  useEffect(() => {
+    if (submissionId) {
+      if (activeTab === 'linkedin') {
+        navigate(`/feedback/${submissionId}`);
+      } else {
+        navigate(`/feedback/${submissionId}/${activeTab}`);
+      }
+    } else {
+      navigate('/');
+    }
+  }, [submissionId, activeTab, navigate]);
+
+  // Validate tab completion
+  const validateTab = (tabName) => {
+    switch (tabName) {
+      case 'linkedin':
+        return formData.linkedin_feedback.trim() !== '' && formData.linkedin_chosen_llm !== '';
+      case 'twitter':
+        return formData.x_feedback.trim() !== '' && formData.x_chosen_llm !== '';
+      case 'images':
+        return formData.image_feedback.trim() !== '' && formData.image_chosen_llm !== '';
+      default:
+        return false;
+    }
+  };
+
+  // Update tab validation when form data changes
+  useEffect(() => {
+    setTabValidation({
+      linkedin: validateTab('linkedin'),
+      twitter: validateTab('twitter'),
+      images: validateTab('images')
+    });
+  }, [formData]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -62,363 +257,326 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     }));
   };
 
+  const handleTabChange = (newTab) => {
+    if (!canAccessTab(newTab)) return;
+    
+    // Mark current tab as visited
+    setVisitedTabs(prev => new Set([...prev, activeTab, newTab]));
+    setActiveTab(newTab);
+  };
+
+  const canSubmit = () => {
+    // Check if any field has been modified from its original state
+    const hasModifications = hasChanges();
+    
+    // Debug logging
+    console.log('Submit button debug:', {
+      hasModifications,
+      formData: {
+        email: formData.email,
+        linkedin_feedback: formData.linkedin_feedback,
+        linkedin_chosen_llm: formData.linkedin_chosen_llm,
+        x_feedback: formData.x_feedback,
+        x_chosen_llm: formData.x_chosen_llm,
+        image_feedback: formData.image_feedback,
+        image_chosen_llm: formData.image_chosen_llm
+      },
+      originalFormData: {
+        email: originalFormData.email,
+        linkedin_feedback: originalFormData.linkedin_feedback,
+        linkedin_chosen_llm: originalFormData.linkedin_chosen_llm,
+        x_feedback: originalFormData.x_feedback,
+        x_chosen_llm: originalFormData.x_chosen_llm,
+        image_feedback: originalFormData.image_feedback,
+        image_chosen_llm: originalFormData.image_chosen_llm
+      }
+    });
+    
+    // Enable submit button if any field has been modified
+    return hasModifications;
+  };
+
+  const canAccessTab = (tabName) => {
+    // If in edit mode, allow access to all tabs
+    if (isEditMode) return true;
+    
+    // For new submissions, allow access to all tabs
+    const availableTabs = getAvailableTabs();
+    return availableTabs.includes(tabName);
+  };
+
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    if (!canSubmit()) {
+      setModal({
+        isOpen: true,
+        title: 'Incomplete Form',
+        message: 'Please fill in all required fields for available tabs before submitting feedback.',
+        type: 'error'
+      });
+      return;
+    }
+
     setLoading(true);
-    setMessage({ type: '', text: '' });
 
     try {
-      const response = await axios.post('/api/feedback', formData);
-      setMessage({
-        type: 'success',
-        text: `Feedback submitted successfully! Submission ID: ${response.data.submission_id}`
+      const response = await axios.put(`/api/feedback/${submissionId}`, formData);
+      setModal({
+        isOpen: true,
+        title: 'Success!',
+        message: `Feedback submitted successfully! Submission ID: ${response.data.submission_id}`,
+        type: 'success'
       });
-      // Reset form
-      setFormData(prev => ({
-        ...prev,
-        n8n_execution_id: '',
-        linkedin_feedback: '',
-        linkedin_chosen_llm: '',
-        linkedin_custom_content: '',
-        x_feedback: '',
-        x_chosen_llm: '',
-        x_custom_content: '',
-        image_feedback: '',
-        image_chosen_llm: ''
-      }));
+      
+      // Navigate to success page after a short delay
+      setTimeout(() => {
+        navigate(`/success/${response.data.submission_id}`);
+      }, 2000);
+      
     } catch (error) {
-      setMessage({
-        type: 'error',
-        text: error.response?.data?.detail || 'Failed to submit feedback. Please try again.'
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.detail || 'Failed to submit feedback. Please try again.',
+        type: 'error'
       });
     } finally {
       setLoading(false);
     }
   };
 
-  const ContentPreview = ({ title, content, icon: Icon, isPrefilled = true }) => (
-    <div className="card mb-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className="text-primary text-lg" />
-        <h4 className="text-lg font-semibold text-text-primary">{title}</h4>
-        {isPrefilled && (
-          <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-            Pre-filled
-          </span>
-        )}
-      </div>
-      <div className="bg-black bg-opacity-30 rounded-lg p-4 border-l-4 border-primary">
-        <p className="text-text-secondary text-sm leading-relaxed whitespace-pre-wrap">
-          {content || 'No content available'}
-        </p>
-      </div>
-    </div>
-  );
+  const loadExistingFeedback = async (id) => {
+    try {
+      const response = await axios.get(`/api/feedback/${id}`);
+      setFormData(response.data);
+      setOriginalFormData(response.data); // Store original state for comparison
+      setSubmissionId(id);
+      setIsEditMode(true);
+      setVisitedTabs(new Set(['linkedin', 'twitter', 'images'])); // Mark all tabs as visited for existing feedback
+      // Removed success modal - only show success when submitting feedback
+    } catch (error) {
+      setModal({
+        isOpen: true,
+        title: 'Error',
+        message: error.response?.data?.detail || 'Failed to load feedback. Please check the ID.',
+        type: 'error'
+      });
+    }
+  };
 
-  const ImagePreview = ({ title, url, icon: Icon, isPrefilled = true }) => (
-    <div className="card mb-4">
-      <div className="flex items-center gap-2 mb-3">
-        <Icon className="text-primary text-lg" />
-        <h4 className="text-lg font-semibold text-text-primary">{title}</h4>
-        {isPrefilled && (
-          <span className="bg-green-600 text-white text-xs px-2 py-1 rounded-full">
-            Pre-filled
-          </span>
-        )}
-      </div>
-      {url ? (
-        <img 
-          src={url} 
-          alt={title}
-          className="max-w-xs max-h-48 rounded-lg border-2 border-border"
-          onError={(e) => {
-            e.target.style.display = 'none';
-            e.target.nextSibling.style.display = 'block';
-          }}
-        />
-      ) : (
-        <div className="bg-black bg-opacity-30 rounded-lg p-4 border-l-4 border-primary">
-          <p className="text-text-muted text-sm">No image URL provided</p>
-        </div>
-      )}
-    </div>
-  );
+  const TabButton = ({ id, label, icon: Icon, isActive, isCompleted, isVisited }) => {
+    const canAccess = canAccessTab(id);
+    const availableTabs = getAvailableTabs();
+    
+    // Don't render if tab has no content
+    if (!availableTabs.includes(id)) return null;
+    
+    return (
+      <button
+        onClick={() => handleTabChange(id)}
+        disabled={!canAccess}
+        className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium transition-all duration-300 text-xs sm:text-sm whitespace-nowrap ${
+          isActive 
+            ? 'bg-slate-800 text-white shadow-md' 
+            : isCompleted
+            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
+            : canAccess
+            ? 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
+            : 'text-slate-400 bg-slate-100 cursor-not-allowed'
+        }`}
+      >
+        <Icon className="text-sm sm:text-lg" />
+        <span className="hidden sm:inline">{label}</span>
+        <span className="sm:hidden">{label.split(' ')[0]}</span>
+        {isCompleted && <FiCheck className="text-emerald-600 text-xs sm:text-sm" />}
+        {!canAccess && <FiLock className="text-slate-400 text-xs sm:text-sm" />}
+      </button>
+    );
+  };
 
   return (
-    <div className="min-h-screen bg-background">
-      <div className="container mx-auto px-4 py-8">
-        <div className="max-w-6xl mx-auto">
-          <header className="text-center mb-8">
-            <h1 className="text-4xl font-bold text-text-primary mb-2">
-              n8n Execution Feedback System
+    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+      <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
+        <div className="max-w-7xl mx-auto">
+          {/* Header */}
+          <header className="text-center mb-8 sm:mb-12">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 mb-3 sm:mb-4 animate-fade-in">
+              n8n Execution Feedback
             </h1>
-            <p className="text-text-secondary">
-              Collect and store feedback for n8n execution results
+            <p className="text-slate-600 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
+              Collect and manage feedback for n8n execution results with a modern, intuitive interface
             </p>
           </header>
 
-          {message.text && (
-            <div className={`card mb-6 ${
-              message.type === 'success' 
-                ? 'bg-green-900 bg-opacity-20 border-green-500' 
-                : 'bg-red-900 bg-opacity-20 border-red-500'
-            }`}>
-              <div className="flex items-center gap-2">
-                {message.type === 'success' ? (
-                  <FiCheck className="text-green-400" />
+          {/* Load Existing Feedback / Create New */}
+          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm hover:shadow-md transition-all duration-300">
+            <div className="flex flex-col sm:flex-row sm:items-center gap-4">
+              <div className="flex items-center gap-3 sm:gap-4">
+                <div className="p-2 bg-slate-100 rounded-xl">
+                  {isEditMode ? <FiEdit3 className="text-slate-600 text-lg" /> : <FiEye className="text-slate-600 text-lg" />}
+                </div>
+                <div className="flex-1">
+                  <h3 className="text-base sm:text-lg font-medium text-slate-800 mb-1 sm:mb-2">
+                    {isEditMode ? 'Editing Existing Feedback' : 'Load Existing Feedback'}
+                  </h3>
+                  <p className="text-slate-500 text-xs sm:text-sm">
+                    {isEditMode 
+                      ? `Currently editing feedback with ID: ${submissionId}` 
+                      : 'Enter a submission ID to load and edit existing feedback'
+                    }
+                  </p>
+                </div>
+              </div>
+              <div className="flex flex-col sm:flex-row gap-3">
+                {!isEditMode ? (
+                  <>
+                    <input
+                      type="text"
+                      placeholder="Enter submission ID"
+                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition-all duration-200 text-sm sm:text-base"
+                      onChange={(e) => setSubmissionId(e.target.value)}
+                    />
+                    <button
+                      onClick={() => loadExistingFeedback(submissionId)}
+                      className="bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-700 transition-all duration-200 text-sm sm:text-base"
+                    >
+                      Load
+                    </button>
+                  </>
                 ) : (
-                  <FiAlertCircle className="text-red-400" />
+                  <div className="text-emerald-600 text-sm font-medium">
+                    ✓ Feedback loaded successfully
+                  </div>
                 )}
-                <span className={message.type === 'success' ? 'text-green-400' : 'text-red-400'}>
-                  {message.text}
-                </span>
               </div>
             </div>
-          )}
+          </div>
 
-          <form onSubmit={handleSubmit} className="space-y-8">
-            {/* n8n Execution ID */}
-            <div className="card">
-              <h2 className="section-title">n8n Execution ID</h2>
-              <div className="mb-4">
-                <label className="block text-text-secondary font-semibold mb-2">
-                  Execution ID * <span className="text-blue-400 text-sm">(User Input)</span>
-                </label>
-                <input
-                  type="text"
-                  name="n8n_execution_id"
-                  value={formData.n8n_execution_id}
-                  onChange={handleInputChange}
-                  className="form-input"
-                  placeholder="Enter n8n execution ID"
-                  required
-                />
-              </div>
-            </div>
-
-            {/* LinkedIn Content Section */}
-            <div className="card">
-              <h2 className="section-title flex items-center gap-2">
-                <FiLinkedin className="text-primary" />
-                LinkedIn Content
+          <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
+            {/* Basic Information */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
+              <h2 className="text-xl sm:text-2xl font-medium text-slate-800 mb-4 sm:mb-6 flex items-center gap-3">
+                <div className="p-2 bg-slate-100 rounded-xl">
+                  <FiEdit3 className="text-slate-600 text-lg" />
+                </div>
+                Basic Information
               </h2>
               
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <ContentPreview 
-                  title="Grok Content" 
-                  content={formData.linkedin_grok_content}
-                  icon={FiLinkedin}
-                />
-                <ContentPreview 
-                  title="o3 Content" 
-                  content={formData.linkedin_o3_content}
-                  icon={FiLinkedin}
-                />
-                <ContentPreview 
-                  title="Gemini Content" 
-                  content={formData.linkedin_gemini_content}
-                  icon={FiLinkedin}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
+              <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-text-secondary font-semibold mb-2">
-                    LinkedIn Feedback <span className="text-blue-400 text-sm">(User Input)</span>
+                  <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
+                    n8n Execution ID <span className="text-slate-500 text-xs sm:text-sm">(Read-only)</span>
                   </label>
-                  <textarea
-                    name="linkedin_feedback"
-                    value={formData.linkedin_feedback}
-                    onChange={handleInputChange}
-                    className="form-input min-h-32"
-                    placeholder="Enter your feedback for LinkedIn content..."
+                  <input
+                    type="text"
+                    name="n8n_execution_id"
+                    value={formData.n8n_execution_id}
+                    readOnly
+                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-slate-600 cursor-not-allowed text-sm sm:text-base"
+                    placeholder="Execution ID will be loaded automatically"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-text-secondary font-semibold mb-2">
-                    Choose LinkedIn LLM <span className="text-blue-400 text-sm">(User Input)</span>
+                  <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
+                    Email <span className="text-red-500">*</span>
                   </label>
-                  <select
-                    name="linkedin_chosen_llm"
-                    value={formData.linkedin_chosen_llm}
+                  <input
+                    type="email"
+                    name="email"
+                    value={formData.email}
                     onChange={handleInputChange}
-                    className="form-input"
-                  >
-                    <option value="">Select LLM</option>
-                    <option value="Grok">Grok</option>
-                    <option value="o3">o3</option>
-                    <option value="Gemini">Gemini</option>
-                  </select>
+                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition-all duration-200 text-sm sm:text-base"
+                    placeholder="Enter your email"
+                    required
+                  />
                 </div>
-              </div>
-
-              <div className="mt-6">
-                <label className="block text-text-secondary font-semibold mb-2">
-                  LinkedIn Custom Content <span className="text-blue-400 text-sm">(User Input)</span>
-                </label>
-                <textarea
-                  name="linkedin_custom_content"
-                  value={formData.linkedin_custom_content}
-                  onChange={handleInputChange}
-                  className="form-input min-h-32"
-                  placeholder="Enter custom LinkedIn content..."
-                />
               </div>
             </div>
 
-            {/* X/Twitter Content Section */}
-            <div className="card">
-              <h2 className="section-title flex items-center gap-2">
-                <FiTwitter className="text-primary" />
-                X/Twitter Content
-              </h2>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <ContentPreview 
-                  title="Grok Content" 
-                  content={formData.x_grok_content}
-                  icon={FiTwitter}
-                />
-                <ContentPreview 
-                  title="o3 Content" 
-                  content={formData.x_o3_content}
-                  icon={FiTwitter}
-                />
-                <ContentPreview 
-                  title="Gemini Content" 
-                  content={formData.x_gemini_content}
-                  icon={FiTwitter}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-text-secondary font-semibold mb-2">
-                    X Feedback <span className="text-blue-400 text-sm">(User Input)</span>
-                  </label>
-                  <textarea
-                    name="x_feedback"
-                    value={formData.x_feedback}
-                    onChange={handleInputChange}
-                    className="form-input min-h-32"
-                    placeholder="Enter your feedback for X content..."
+            {/* Content Tabs */}
+            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="sticky top-0 z-10 bg-white border-b border-slate-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 mb-6 sm:mb-8">
+                <div className="flex gap-2 overflow-x-auto pb-2">
+                  <TabButton 
+                    id="linkedin" 
+                    label="LinkedIn Content" 
+                    icon={FiLinkedin} 
+                    isActive={activeTab === 'linkedin'}
+                    isCompleted={tabValidation.linkedin}
+                    isVisited={visitedTabs.has('linkedin')}
+                  />
+                  <TabButton 
+                    id="twitter" 
+                    label="X/Twitter Content" 
+                    icon={FiTwitter} 
+                    isActive={activeTab === 'twitter'}
+                    isCompleted={tabValidation.twitter}
+                    isVisited={visitedTabs.has('twitter')}
+                  />
+                  <TabButton 
+                    id="images" 
+                    label="Generated Images" 
+                    icon={FiImage} 
+                    isActive={activeTab === 'images'}
+                    isCompleted={tabValidation.images}
+                    isVisited={visitedTabs.has('images')}
                   />
                 </div>
-                
-                <div>
-                  <label className="block text-text-secondary font-semibold mb-2">
-                    Choose X LLM <span className="text-blue-400 text-sm">(User Input)</span>
-                  </label>
-                  <select
-                    name="x_chosen_llm"
-                    value={formData.x_chosen_llm}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  >
-                    <option value="">Select LLM</option>
-                    <option value="Grok">Grok</option>
-                    <option value="o3">o3</option>
-                    <option value="Gemini">Gemini</option>
-                  </select>
-                </div>
               </div>
 
-              <div className="mt-6">
-                <label className="block text-text-secondary font-semibold mb-2">
-                  X Custom Content <span className="text-blue-400 text-sm">(User Input)</span>
-                </label>
-                <textarea
-                  name="x_custom_content"
-                  value={formData.x_custom_content}
-                  onChange={handleInputChange}
-                  className="form-input min-h-32"
-                  placeholder="Enter custom X content..."
-                />
-              </div>
-            </div>
-
-            {/* Image Section */}
-            <div className="card">
-              <h2 className="section-title flex items-center gap-2">
-                <FiImage className="text-primary" />
-                Generated Images
-              </h2>
-              
-              <div className="grid grid-cols-1 lg:grid-cols-3 gap-6 mb-6">
-                <ImagePreview 
-                  title="Stable Diffusion" 
-                  url={formData.stable_diffusion_image_url}
-                  icon={FiImage}
-                />
-                <ImagePreview 
-                  title="Pixabay" 
-                  url={formData.pixabay_image_url}
-                  icon={FiImage}
-                />
-                <ImagePreview 
-                  title="GPT1" 
-                  url={formData.gpt1_image_url}
-                  icon={FiImage}
-                />
-              </div>
-
-              <div className="grid grid-cols-1 md:grid-cols-2 gap-6">
-                <div>
-                  <label className="block text-text-secondary font-semibold mb-2">
-                    Image Feedback <span className="text-blue-400 text-sm">(User Input)</span>
-                  </label>
-                  <textarea
-                    name="image_feedback"
-                    value={formData.image_feedback}
-                    onChange={handleInputChange}
-                    className="form-input min-h-32"
-                    placeholder="Enter your feedback for images..."
-                  />
-                </div>
-                
-                <div>
-                  <label className="block text-text-secondary font-semibold mb-2">
-                    Choose Image LLM <span className="text-blue-400 text-sm">(User Input)</span>
-                  </label>
-                  <select
-                    name="image_chosen_llm"
-                    value={formData.image_chosen_llm}
-                    onChange={handleInputChange}
-                    className="form-input"
-                  >
-                    <option value="">Select LLM</option>
-                    <option value="Stable">Stable Diffusion</option>
-                    <option value="Pixabay">Pixabay</option>
-                    <option value="GPT1">GPT1</option>
-                  </select>
-                </div>
-              </div>
+              {/* Tab Content */}
+              <TabContent
+                activeTab={activeTab}
+                formData={formData}
+                handleInputChange={handleInputChange}
+                tabValidation={tabValidation}
+              />
             </div>
 
             {/* Submit Button */}
             <div className="text-center">
               <button
                 type="submit"
-                disabled={loading}
-                className="btn-primary disabled:opacity-50 disabled:cursor-not-allowed"
+                disabled={loading || !canSubmit()}
+                className={`px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-medium transition-all duration-300 shadow-sm hover:shadow-md text-sm sm:text-base ${
+                  canSubmit()
+                    ? 'bg-slate-800 text-white hover:bg-slate-700'
+                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                }`}
               >
                 {loading ? (
-                  <div className="flex items-center gap-2">
-                    <div className="animate-spin rounded-full h-4 w-4 border-b-2 border-white"></div>
-                    Submitting...
+                  <div className="flex items-center gap-3">
+                    <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+                    <span>Submitting...</span>
                   </div>
                 ) : (
-                  <div className="flex items-center gap-2">
+                  <div className="flex items-center gap-3">
                     <FiSend />
-                    Submit Feedback
+                    <span>Submit Feedback</span>
                   </div>
                 )}
               </button>
+              
+              {!canSubmit() && (
+                <p className="text-red-500 text-xs sm:text-sm mt-2">
+                  Please modify at least one field to enable submission
+                </p>
+              )}
             </div>
           </form>
         </div>
       </div>
+
+      {/* Modal */}
+      <Modal
+        isOpen={modal.isOpen}
+        onClose={() => setModal({ ...modal, isOpen: false })}
+        title={modal.title}
+        message={modal.message}
+        type={modal.type}
+      />
     </div>
   );
 }

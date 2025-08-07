@@ -6,6 +6,7 @@ from typing import List
 import uuid
 import logging
 import traceback
+from datetime import datetime
 
 from . import models, schemas
 from .database import engine, get_db
@@ -71,39 +72,6 @@ def create_feedback_submission(
             detail=f"Internal server error: {str(e)}"
         )
 
-@app.get("/api/feedback/{submission_id}", response_model=schemas.FeedbackSubmissionResponse)
-def get_feedback_by_submission_id(submission_id: str, db: Session = Depends(get_db)):
-    """Get feedback submission by submission ID"""
-    try:
-        logger.info(f"Fetching feedback submission with ID: {submission_id}")
-        
-        feedback = db.query(models.FeedbackSubmission).filter(
-            models.FeedbackSubmission.submission_id == submission_id
-        ).first()
-        
-        if feedback is None:
-            logger.warning(f"Feedback submission not found with ID: {submission_id}")
-            raise HTTPException(status_code=404, detail="Feedback submission not found")
-        
-        logger.info(f"Successfully retrieved feedback submission with ID: {submission_id}")
-        return feedback
-        
-    except HTTPException:
-        raise
-    except SQLAlchemyError as e:
-        logger.error(f"Database error fetching feedback submission: {str(e)}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Database error: {str(e)}"
-        )
-    except Exception as e:
-        logger.error(f"Unexpected error fetching feedback submission: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Internal server error: {str(e)}"
-        )
-
 @app.get("/api/feedback", response_model=List[schemas.FeedbackSubmissionResponse])
 def get_all_feedback_submissions(
     skip: int = 0,
@@ -160,6 +128,100 @@ def get_feedback_by_execution_id(execution_id: str, db: Session = Depends(get_db
             detail=f"Internal server error: {str(e)}"
         )
 
+@app.get("/api/feedback/{submission_id}", response_model=schemas.FeedbackSubmissionResponse)
+def get_feedback_by_submission_id(submission_id: str, db: Session = Depends(get_db)):
+    """Get feedback submission by submission ID"""
+    try:
+        logger.info(f"Fetching feedback submission with ID: {submission_id}")
+        
+        feedback = db.query(models.FeedbackSubmission).filter(
+            models.FeedbackSubmission.submission_id == submission_id
+        ).first()
+        
+        if feedback is None:
+            logger.warning(f"Feedback submission not found with ID: {submission_id}")
+            raise HTTPException(status_code=404, detail="Feedback submission not found")
+        
+        logger.info(f"Successfully retrieved feedback submission with ID: {submission_id}")
+        return feedback
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error fetching feedback submission: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error fetching feedback submission: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+@app.put("/api/feedback/{submission_id}", response_model=schemas.FeedbackSubmissionResponse)
+def update_feedback_submission(
+    submission_id: str,
+    feedback_update: schemas.FeedbackSubmissionUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update an existing feedback submission"""
+    try:
+        logger.info(f"Updating feedback submission with ID: {submission_id}")
+        
+        # Get existing feedback submission
+        db_feedback = db.query(models.FeedbackSubmission).filter(
+            models.FeedbackSubmission.submission_id == submission_id
+        ).first()
+        
+        if db_feedback is None:
+            logger.warning(f"Feedback submission not found with ID: {submission_id}")
+            raise HTTPException(status_code=404, detail="Feedback submission not found")
+        
+        # Update only the fields that are provided
+        update_data = feedback_update.model_dump(exclude_unset=True)
+        if update_data:
+            update_data['updated_at'] = datetime.utcnow()
+            
+            for field, value in update_data.items():
+                setattr(db_feedback, field, value)
+            
+            db.commit()
+            db.refresh(db_feedback)
+            
+            logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
+            return db_feedback
+        else:
+            logger.info(f"No fields to update for submission ID: {submission_id}")
+            return db_feedback
+            
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        logger.error(f"Database integrity error updating feedback submission: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Database integrity error: {str(e)}"
+        )
+    except SQLAlchemyError as e:
+        logger.error(f"Database error updating feedback submission: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating feedback submission: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
 @app.get("/")
 def read_root():
     """Root endpoint"""
@@ -175,7 +237,7 @@ def health_check():
     """Health check endpoint"""
     try:
         logger.info("Health check endpoint accessed")
-        return {"status": "healthy"}
+        return {"status": "healthy", "message": "API is running"}
     except Exception as e:
         logger.error(f"Error in health check endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail="Health check failed") 
