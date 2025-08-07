@@ -266,34 +266,8 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   };
 
   const canSubmit = () => {
-    // Check if any field has been modified from its original state
-    const hasModifications = hasChanges();
-    
-    // Debug logging
-    console.log('Submit button debug:', {
-      hasModifications,
-      formData: {
-        email: formData.email,
-        linkedin_feedback: formData.linkedin_feedback,
-        linkedin_chosen_llm: formData.linkedin_chosen_llm,
-        x_feedback: formData.x_feedback,
-        x_chosen_llm: formData.x_chosen_llm,
-        image_feedback: formData.image_feedback,
-        image_chosen_llm: formData.image_chosen_llm
-      },
-      originalFormData: {
-        email: originalFormData.email,
-        linkedin_feedback: originalFormData.linkedin_feedback,
-        linkedin_chosen_llm: originalFormData.linkedin_chosen_llm,
-        x_feedback: originalFormData.x_feedback,
-        x_chosen_llm: originalFormData.x_chosen_llm,
-        image_feedback: originalFormData.image_feedback,
-        image_chosen_llm: originalFormData.image_chosen_llm
-      }
-    });
-    
-    // Enable submit button if any field has been modified
-    return hasModifications;
+    // Always enable submit button
+    return true;
   };
 
   const canAccessTab = (tabName) => {
@@ -308,16 +282,6 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   const handleSubmit = async (e) => {
     e.preventDefault();
     
-    if (!canSubmit()) {
-      setModal({
-        isOpen: true,
-        title: 'Incomplete Form',
-        message: 'Please fill in all required fields for available tabs before submitting feedback.',
-        type: 'error'
-      });
-      return;
-    }
-
     setLoading(true);
 
     try {
@@ -405,7 +369,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
               n8n Execution Feedback
             </h1>
             <p className="text-slate-600 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
-              Collect and manage feedback for n8n execution results with a modern, intuitive interface
+              Collect and manage feedback for n8n execution results
             </p>
           </header>
 
@@ -480,16 +444,15 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 
                 <div>
                   <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                    Email <span className="text-red-500">*</span>
+                    Email <span className="text-slate-500 text-xs sm:text-sm">(Read-only)</span>
                   </label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
-                    onChange={handleInputChange}
-                    className="w-full bg-slate-50 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition-all duration-200 text-sm sm:text-base"
-                    placeholder="Enter your email"
-                    required
+                    readOnly
+                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-slate-600 cursor-not-allowed text-sm sm:text-base"
+                    placeholder="Email will be loaded automatically"
                   />
                 </div>
               </div>
@@ -559,11 +522,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 )}
               </button>
               
-              {!canSubmit() && (
-                <p className="text-red-500 text-xs sm:text-sm mt-2">
-                  Please modify at least one field to enable submission
-                </p>
-              )}
+
             </div>
           </form>
         </div>
