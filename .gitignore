@@ -1,1 +1,2 @@
 backend/app/__pycache__/*
+backend/alembic/versions/__pycache__/*

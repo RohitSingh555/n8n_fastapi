@@ -7,6 +7,10 @@ import axios from 'axios';
 import Modal from './components/Modal';
 import SuccessPage from './components/SuccessPage';
 import TabContent from './components/TabContent';
+import SocialMediaForm from './components/SocialMediaForm';
+
+// Import logo
+import logo from './assets/logo.png';
 
 function App() {
   return (
@@ -16,6 +20,7 @@ function App() {
         <Route path="/feedback/:submissionId" element={<FeedbackForm />} />
         <Route path="/feedback/:submissionId/:activeTab" element={<FeedbackForm />} />
         <Route path="/success/:submissionId" element={<SuccessPageWrapper />} />
+        <Route path="/social-media" element={<SocialMediaForm />} />
       </Routes>
     </Router>
   );
@@ -164,54 +169,8 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     }
   }, [urlSubmissionId, urlActiveTab]);
 
-  // Auto-select LLM based on available content
-  useEffect(() => {
-    const autoSelectLLM = () => {
-      const updatedFormData = { ...formData };
-      
-      // LinkedIn auto-selection
-      if (!formData.linkedin_chosen_llm) {
-        if (formData.linkedin_grok_content?.trim()) {
-          updatedFormData.linkedin_chosen_llm = 'Grok';
-        } else if (formData.linkedin_o3_content?.trim()) {
-          updatedFormData.linkedin_chosen_llm = 'o3';
-        } else if (formData.linkedin_gemini_content?.trim()) {
-          updatedFormData.linkedin_chosen_llm = 'Gemini';
-        }
-      }
-      
-      // Twitter auto-selection
-      if (!formData.x_chosen_llm) {
-        if (formData.x_grok_content?.trim()) {
-          updatedFormData.x_chosen_llm = 'Grok';
-        } else if (formData.x_o3_content?.trim()) {
-          updatedFormData.x_chosen_llm = 'o3';
-        } else if (formData.x_gemini_content?.trim()) {
-          updatedFormData.x_chosen_llm = 'Gemini';
-        }
-      }
-      
-      // Image auto-selection
-      if (!formData.image_chosen_llm) {
-        if (formData.stable_diffusion_image_url?.trim()) {
-          updatedFormData.image_chosen_llm = 'Stable';
-        } else if (formData.pixabay_image_url?.trim()) {
-          updatedFormData.image_chosen_llm = 'Pixabay';
-        } else if (formData.gpt1_image_url?.trim()) {
-          updatedFormData.image_chosen_llm = 'GPT1';
-        }
-      }
-      
-      // Only update if there are changes
-      if (JSON.stringify(updatedFormData) !== JSON.stringify(formData)) {
-        setFormData(updatedFormData);
-      }
-    };
-    
-    autoSelectLLM();
-  }, [formData.linkedin_grok_content, formData.linkedin_o3_content, formData.linkedin_gemini_content, 
-      formData.x_grok_content, formData.x_o3_content, formData.x_gemini_content,
-      formData.stable_diffusion_image_url, formData.pixabay_image_url, formData.gpt1_image_url]);
+  // Note: Removed auto-selection logic to allow users to manually choose their preferred LLM
+  // Users must now explicitly select one of the available options
 
   // Update URL when tab or submissionId changes
   useEffect(() => {
@@ -230,11 +189,19 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   const validateTab = (tabName) => {
     switch (tabName) {
       case 'linkedin':
-        return formData.linkedin_feedback.trim() !== '' && formData.linkedin_chosen_llm !== '';
+        // For LinkedIn, any one of the three fields should be filled (mutual exclusion)
+        return formData.linkedin_feedback.trim() !== '' || 
+               formData.linkedin_chosen_llm !== '' || 
+               formData.linkedin_custom_content.trim() !== '';
       case 'twitter':
-        return formData.x_feedback.trim() !== '' && formData.x_chosen_llm !== '';
+        // For Twitter, any one of the three fields should be filled (mutual exclusion)
+        return formData.x_feedback.trim() !== '' || 
+               formData.x_chosen_llm !== '' || 
+               formData.x_custom_content.trim() !== '';
       case 'images':
-        return formData.image_feedback.trim() !== '' && formData.image_chosen_llm !== '';
+        // For Images, any one of the two fields should be filled (mutual exclusion)
+        return formData.image_feedback.trim() !== '' || 
+               formData.image_chosen_llm !== '';
       default:
         return false;
     }
@@ -365,12 +332,37 @@ To all the healthcare providers out there: what's the biggest challenge AI could
         <div className="max-w-7xl mx-auto">
           {/* Header */}
           <header className="text-center mb-8 sm:mb-12">
+            {/* Logo */}
+            <div className="flex justify-center mb-6">
+              <div className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+                <img 
+                  src={logo} 
+                  alt="n8n Automation Logo" 
+                  className="h-16 w-auto sm:h-20 md:h-24 object-contain"
+                />
+              </div>
+            </div>
+            
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 mb-3 sm:mb-4 animate-fade-in">
               n8n Execution Feedback
             </h1>
             <p className="text-slate-600 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
               Collect and manage feedback for n8n execution results
             </p>
+            <div className="flex justify-center gap-4 mt-6">
+              <button 
+                onClick={() => navigate('/')}
+                className="px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all duration-200 text-sm shadow-md"
+              >
+                Feedback Form
+              </button>
+              <button 
+                onClick={() => navigate('/social-media')}
+                className="px-4 py-2 bg-slate-600 text-white rounded-xl hover:bg-slate-500 transition-all duration-200 text-sm"
+              >
+                Social Media Form
+              </button>
+            </div>
           </header>
 
           {/* Load Existing Feedback / Create New */}

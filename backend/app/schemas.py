@@ -66,4 +66,49 @@ class FeedbackSubmissionResponse(FeedbackSubmissionBase):
     updated_at: Optional[datetime] = None
 
     class Config:
+        from_attributes = True
+
+
+# Social Media Post Schemas
+class SocialMediaPostBase(BaseModel):
+    content_creator: str
+    email: str
+    social_platform: str
+    custom_content: Optional[str] = None
+    ai_prompt: Optional[str] = None
+    excluded_llms: Optional[str] = None  # JSON string
+    post_image_type: Optional[str] = None
+    image_url: Optional[str] = None
+    image_file_path: Optional[str] = None
+    ai_image_style: Optional[str] = None
+    ai_image_description: Optional[str] = None
+    status: Optional[str] = "pending"
+
+
+class SocialMediaPostCreate(SocialMediaPostBase):
+    pass
+
+
+class SocialMediaPostUpdate(BaseModel):
+    content_creator: Optional[str] = None
+    email: Optional[str] = None
+    social_platform: Optional[str] = None
+    custom_content: Optional[str] = None
+    ai_prompt: Optional[str] = None
+    excluded_llms: Optional[str] = None
+    post_image_type: Optional[str] = None
+    image_url: Optional[str] = None
+    image_file_path: Optional[str] = None
+    ai_image_style: Optional[str] = None
+    ai_image_description: Optional[str] = None
+    status: Optional[str] = None
+
+
+class SocialMediaPostResponse(SocialMediaPostBase):
+    id: int
+    post_id: str
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
         from_attributes = True 

@@ -49,6 +49,8 @@ services:
       - n8n_network
     environment:
       - REACT_APP_API_URL=http://localhost:8001
+      - CHOKIDAR_USEPOLLING=true
+      - WATCHPACK_POLLING=true
 
 volumes:
   postgres_data:

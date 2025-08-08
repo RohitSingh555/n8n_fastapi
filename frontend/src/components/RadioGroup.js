@@ -15,6 +15,11 @@ const RadioGroup = ({
       <label className="block text-slate-700 font-medium mb-3 text-sm sm:text-base">
         {label} {required && <span className="text-red-500">*</span>}
       </label>
+      {!value && (
+        <div className="text-sm text-slate-500 mb-3 italic">
+          Please select one option below
+        </div>
+      )}
       <div className="grid grid-cols-1 sm:grid-cols-3 gap-3">
         {options.map((option) => (
           <label
@@ -36,13 +41,19 @@ const RadioGroup = ({
               className={`relative p-4 rounded-2xl border-2 transition-all duration-300 transform hover:scale-[1.02] h-24 flex flex-col justify-center ${
                 value === option.value
                   ? 'border-emerald-500 bg-emerald-50 shadow-lg shadow-emerald-100'
+                  : !value
+                  ? 'border-slate-300 bg-slate-50 hover:border-slate-400 hover:bg-slate-100 hover:shadow-md'
                   : 'border-slate-200 bg-white hover:border-slate-300 hover:bg-slate-50 hover:shadow-md'
               } ${disabled ? 'cursor-not-allowed' : 'cursor-pointer'}`}
             >
               {/* Selection indicator */}
-              {value === option.value && (
+              {value === option.value ? (
                 <div className="absolute -top-2 -right-2 w-6 h-6 bg-emerald-500 rounded-full flex items-center justify-center shadow-lg">
                   <FiCheck className="text-white text-sm font-bold" />
+                </div>
+              ) : !value && (
+                <div className="absolute -top-2 -right-2 w-6 h-6 bg-slate-200 rounded-full border-2 border-slate-300 flex items-center justify-center">
+                  <div className="w-2 h-2 bg-slate-400 rounded-full"></div>
                 </div>
               )}
               

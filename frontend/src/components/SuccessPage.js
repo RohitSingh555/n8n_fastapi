@@ -1,12 +1,26 @@
 import React from 'react';
 import { FiCheck, FiHome, FiEdit3, FiDownload, FiShare2 } from 'react-icons/fi';
 
+// Import logo
+import logo from '../assets/logo.png';
+
 const SuccessPage = ({ submissionId, onReset, onContinueEditing }) => {
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
         {/* Success Card */}
         <div className="bg-white rounded-3xl shadow-2xl p-8 sm:p-12 text-center">
+          {/* Logo */}
+          <div className="flex justify-center mb-6">
+            <div className="bg-white rounded-2xl p-3 shadow-lg">
+              <img 
+                src={logo} 
+                alt="n8n Automation Logo" 
+                className="h-12 w-auto object-contain"
+              />
+            </div>
+          </div>
+          
           {/* Success Icon */}
           <div className="mx-auto w-20 h-20 bg-emerald-100 rounded-full flex items-center justify-center mb-6">
             <FiCheck className="text-emerald-600 text-3xl" />

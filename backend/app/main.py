@@ -2,7 +2,7 @@ from fastapi import FastAPI, Depends, HTTPException
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from typing import List
+from typing import List, Optional
 import uuid
 import logging
 import traceback
@@ -240,4 +240,248 @@ def health_check():
         return {"status": "healthy", "message": "API is running"}
     except Exception as e:
         logger.error(f"Error in health check endpoint: {str(e)}")
-        raise HTTPException(status_code=500, detail="Health check failed") 
+        raise HTTPException(status_code=500, detail="Health check failed")
+
+
+# Social Media Post Endpoints
+@app.post("/api/social-media-posts", response_model=schemas.SocialMediaPostResponse)
+def create_social_media_post(
+    post: schemas.SocialMediaPostCreate,
+    db: Session = Depends(get_db)
+):
+    """Create a new social media post request"""
+    try:
+        logger.info(f"Creating social media post for creator: {post.content_creator}")
+        
+        db_post = models.SocialMediaPost(
+            post_id=str(uuid.uuid4()),
+            **post.model_dump()
+        )
+        db.add(db_post)
+        db.commit()
+        db.refresh(db_post)
+        
+        logger.info(f"Successfully created social media post with ID: {db_post.post_id}")
+        return db_post
+        
+    except IntegrityError as e:
+        logger.error(f"Database integrity error: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Database integrity error: {str(e)}"
+        )
+    except SQLAlchemyError as e:
+        logger.error(f"Database error: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error creating social media post: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@app.get("/api/social-media-posts", response_model=List[schemas.SocialMediaPostResponse])
+def get_all_social_media_posts(
+    skip: int = 0,
+    limit: int = 100,
+    status: Optional[str] = None,
+    db: Session = Depends(get_db)
+):
+    """Get all social media posts with optional filtering by status"""
+    try:
+        logger.info(f"Fetching social media posts with skip={skip}, limit={limit}, status={status}")
+        
+        query = db.query(models.SocialMediaPost)
+        
+        if status:
+            query = query.filter(models.SocialMediaPost.status == status)
+        
+        posts = query.offset(skip).limit(limit).all()
+        
+        logger.info(f"Successfully retrieved {len(posts)} social media posts")
+        return posts
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Database error fetching social media posts: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error fetching social media posts: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@app.get("/api/social-media-posts/{post_id}", response_model=schemas.SocialMediaPostResponse)
+def get_social_media_post_by_id(post_id: str, db: Session = Depends(get_db)):
+    """Get social media post by post ID"""
+    try:
+        logger.info(f"Fetching social media post with ID: {post_id}")
+        
+        post = db.query(models.SocialMediaPost).filter(
+            models.SocialMediaPost.post_id == post_id
+        ).first()
+        
+        if post is None:
+            logger.warning(f"Social media post not found with ID: {post_id}")
+            raise HTTPException(status_code=404, detail="Social media post not found")
+        
+        logger.info(f"Successfully retrieved social media post with ID: {post_id}")
+        return post
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error fetching social media post: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error fetching social media post: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@app.get("/api/social-media-posts/creator/{creator_id}", response_model=List[schemas.SocialMediaPostResponse])
+def get_social_media_posts_by_creator(creator_id: str, db: Session = Depends(get_db)):
+    """Get social media posts by content creator ID"""
+    try:
+        logger.info(f"Fetching social media posts for creator: {creator_id}")
+        
+        posts = db.query(models.SocialMediaPost).filter(
+            models.SocialMediaPost.content_creator == creator_id
+        ).all()
+        
+        logger.info(f"Successfully retrieved {len(posts)} social media posts for creator: {creator_id}")
+        return posts
+        
+    except SQLAlchemyError as e:
+        logger.error(f"Database error fetching posts by creator: {str(e)}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error fetching posts by creator: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@app.put("/api/social-media-posts/{post_id}", response_model=schemas.SocialMediaPostResponse)
+def update_social_media_post(
+    post_id: str,
+    post_update: schemas.SocialMediaPostUpdate,
+    db: Session = Depends(get_db)
+):
+    """Update an existing social media post"""
+    try:
+        logger.info(f"Updating social media post with ID: {post_id}")
+        
+        # Get existing post
+        db_post = db.query(models.SocialMediaPost).filter(
+            models.SocialMediaPost.post_id == post_id
+        ).first()
+        
+        if db_post is None:
+            logger.warning(f"Social media post not found with ID: {post_id}")
+            raise HTTPException(status_code=404, detail="Social media post not found")
+        
+        # Update only the fields that are provided
+        update_data = post_update.model_dump(exclude_unset=True)
+        if update_data:
+            update_data['updated_at'] = datetime.utcnow()
+            
+            for field, value in update_data.items():
+                setattr(db_post, field, value)
+            
+            db.commit()
+            db.refresh(db_post)
+            
+            logger.info(f"Successfully updated social media post with ID: {post_id}")
+            return db_post
+        else:
+            logger.info(f"No fields to update for post ID: {post_id}")
+            return db_post
+            
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        logger.error(f"Database integrity error updating social media post: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Database integrity error: {str(e)}"
+        )
+    except SQLAlchemyError as e:
+        logger.error(f"Database error updating social media post: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating social media post: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+
+@app.delete("/api/social-media-posts/{post_id}")
+def delete_social_media_post(post_id: str, db: Session = Depends(get_db)):
+    """Delete a social media post"""
+    try:
+        logger.info(f"Deleting social media post with ID: {post_id}")
+        
+        db_post = db.query(models.SocialMediaPost).filter(
+            models.SocialMediaPost.post_id == post_id
+        ).first()
+        
+        if db_post is None:
+            logger.warning(f"Social media post not found with ID: {post_id}")
+            raise HTTPException(status_code=404, detail="Social media post not found")
+        
+        db.delete(db_post)
+        db.commit()
+        
+        logger.info(f"Successfully deleted social media post with ID: {post_id}")
+        return {"message": "Social media post deleted successfully"}
+        
+    except HTTPException:
+        raise
+    except SQLAlchemyError as e:
+        logger.error(f"Database error deleting social media post: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error deleting social media post: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        ) 

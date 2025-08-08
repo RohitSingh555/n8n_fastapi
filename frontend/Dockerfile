@@ -14,5 +14,9 @@ COPY . .
 # Expose port
 EXPOSE 3000
 
-# Start development server
-CMD ["npm", "start"] 
+# Set environment variables for development
+ENV CHOKIDAR_USEPOLLING=true
+ENV WATCHPACK_POLLING=true
+
+# Start development server with hot reload
+CMD ["npm", "run", "dev"] 
