@@ -64,39 +64,82 @@ const TabContent = ({
     const isCustomContentDisabled = hasFeedback || hasLLM;
 
     return (
-      <div className="space-y-6 sm:space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-4 sm:gap-6">
-          {formData.linkedin_grok_content?.trim() && (
-            <ContentPreview 
-              title="Grok Content" 
-              content={formData.linkedin_grok_content}
-              icon={FiLinkedin}
-            />
-          )}
-          {formData.linkedin_o3_content?.trim() && (
-            <ContentPreview 
-              title="o3 Content" 
-              content={formData.linkedin_o3_content}
-              icon={FiLinkedin}
-            />
-          )}
-          {formData.linkedin_gemini_content?.trim() && (
-            <ContentPreview 
-              title="Gemini Content" 
-              content={formData.linkedin_gemini_content}
-              icon={FiLinkedin}
-            />
-          )}
+      <div className="space-y-8 sm:space-y-10">
+        {/* Content Preview Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-8 bg-slate-300 rounded-full"></div>
+            <div className="flex items-center gap-3 group relative">
+              <div className="p-2 bg-slate-100 rounded-xl shadow-sm">
+                <svg className="w-5 h-5 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold text-slate-800">Generated Content</h3>
+              
+              {/* Hover/Click Tooltip */}
+              <div className="absolute top-full left-0 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                <div className="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+                      Ready to use
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                      AI-generated
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                      Click copy to use
+                    </span>
+                  </div>
+                  <div className="absolute top-0 left-4 transform -translate-y-1 w-2 h-2 bg-slate-800 rotate-45"></div>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-slate-300 to-transparent"></div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {formData.linkedin_grok_content?.trim() && (
+              <ContentPreview 
+                title="Grok Content" 
+                content={formData.linkedin_grok_content}
+                icon={FiLinkedin}
+              />
+            )}
+            {formData.linkedin_o3_content?.trim() && (
+              <ContentPreview 
+                title="o3 Content" 
+                content={formData.linkedin_o3_content}
+                icon={FiLinkedin}
+              />
+            )}
+            {formData.linkedin_gemini_content?.trim() && (
+              <ContentPreview 
+                title="Gemini Content" 
+                content={formData.linkedin_gemini_content}
+                icon={FiLinkedin}
+              />
+            )}
+          </div>
         </div>
 
         {/* Mutual exclusion notice */}
         {(hasFeedback || hasLLM || hasCustomContent) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-blue-700 text-sm">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="font-medium">Choose One Approach:</span>
-                <span>Only one feedback method can be used at a time.</span>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 text-blue-700">
+                <div className="p-2 bg-blue-100 rounded-xl">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+                  <span className="font-semibold">Choose One Approach:</span>
+                  <span className="text-blue-600">Only one feedback method can be used at a time.</span>
+                </div>
               </div>
               <button
                 type="button"
@@ -111,7 +154,7 @@ const TabContent = ({
                     target: { name: 'linkedin_custom_content', value: '' }
                   });
                 }}
-                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors duration-200"
+                className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
               >
                 Clear All
               </button>
@@ -191,39 +234,82 @@ const TabContent = ({
     const isCustomContentDisabled = hasFeedback || hasLLM;
 
     return (
-      <div className="space-y-8">
-        <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {formData.x_grok_content?.trim() && (
-            <ContentPreview 
-              title="Grok Content" 
-              content={formData.x_grok_content}
-              icon={FiTwitter}
-            />
-          )}
-          {formData.x_o3_content?.trim() && (
-            <ContentPreview 
-              title="o3 Content" 
-              content={formData.x_o3_content}
-              icon={FiTwitter}
-            />
-          )}
-          {formData.x_gemini_content?.trim() && (
-            <ContentPreview 
-              title="Gemini Content" 
-              content={formData.x_gemini_content}
-              icon={FiTwitter}
-            />
-          )}
+      <div className="space-y-8 sm:space-y-10">
+        {/* Content Preview Section */}
+        <div className="space-y-6">
+          <div className="flex items-center gap-3 mb-4">
+            <div className="w-1 h-8 bg-slate-300 rounded-full"></div>
+            <div className="flex items-center gap-3 group relative">
+              <div className="p-2 bg-slate-100 rounded-xl shadow-sm">
+                <svg className="w-5 h-5 text-slate-600" fill="currentColor" viewBox="0 0 20 20">
+                  <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                </svg>
+              </div>
+              <h3 className="text-xl sm:text-2xl font-semibold text-slate-800">Generated Content</h3>
+              
+              {/* Hover/Click Tooltip */}
+              <div className="absolute top-full left-0 mt-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300 pointer-events-none z-10">
+                <div className="bg-slate-800 text-white text-xs px-3 py-2 rounded-lg shadow-lg whitespace-nowrap">
+                  <div className="flex flex-col gap-1">
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-emerald-400 rounded-full"></div>
+                      Ready to use
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-blue-400 rounded-full"></div>
+                      AI-generated
+                    </span>
+                    <span className="flex items-center gap-2">
+                      <div className="w-1.5 h-1.5 bg-purple-400 rounded-full"></div>
+                      Click copy to use
+                    </span>
+                  </div>
+                  <div className="absolute top-0 left-4 transform -translate-y-1 w-2 h-2 bg-slate-800 rotate-45"></div>
+                </div>
+              </div>
+            </div>
+            <div className="flex-1 h-px bg-gradient-to-r from-slate-300 to-transparent"></div>
+          </div>
+          
+          <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
+            {formData.x_grok_content?.trim() && (
+              <ContentPreview 
+                title="Grok Content" 
+                content={formData.x_grok_content}
+                icon={FiTwitter}
+              />
+            )}
+            {formData.x_o3_content?.trim() && (
+              <ContentPreview 
+                title="o3 Content" 
+                content={formData.x_o3_content}
+                icon={FiTwitter}
+              />
+            )}
+            {formData.x_gemini_content?.trim() && (
+              <ContentPreview 
+                title="Gemini Content" 
+                content={formData.x_gemini_content}
+                icon={FiTwitter}
+              />
+            )}
+          </div>
         </div>
 
         {/* Mutual exclusion notice */}
         {(hasFeedback || hasLLM || hasCustomContent) && (
-          <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
-            <div className="flex items-center justify-between">
-              <div className="flex items-center gap-2 text-blue-700 text-sm">
-                <div className="w-2 h-2 bg-blue-500 rounded-full"></div>
-                <span className="font-medium">Choose One Approach:</span>
-                <span>Only one feedback method can be used at a time.</span>
+          <div className="bg-gradient-to-r from-blue-50 to-indigo-50 border border-blue-200 rounded-2xl p-4 sm:p-6 shadow-sm">
+            <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3">
+              <div className="flex items-center gap-3 text-blue-700">
+                <div className="p-2 bg-blue-100 rounded-xl">
+                  <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                    <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                  </svg>
+                </div>
+                <div className="flex flex-col sm:flex-row sm:items-center gap-1 sm:gap-2 text-sm">
+                  <span className="font-semibold">Choose One Approach:</span>
+                  <span className="text-blue-600">Only one feedback method can be used at a time.</span>
+                </div>
               </div>
               <button
                 type="button"
@@ -238,7 +324,7 @@ const TabContent = ({
                     target: { name: 'x_custom_content', value: '' }
                   });
                 }}
-                className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors duration-200"
+                className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
               >
                 Clear All
               </button>

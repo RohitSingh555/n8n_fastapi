@@ -1,4 +1,4 @@
-from fastapi import FastAPI, Depends, HTTPException
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body
 from fastapi.middleware.cors import CORSMiddleware
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -7,6 +7,8 @@ import uuid
 import logging
 import traceback
 from datetime import datetime
+import httpx
+import os
 
 from . import models, schemas
 from .database import engine, get_db
@@ -23,7 +25,10 @@ app = FastAPI(title="n8n Execution Feedback API", version="1.0.0")
 # Configure CORS
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=["http://localhost:3000"],  # React app URL
+    allow_origins=[
+        "http://localhost:3000",  # React app URL
+        "http://104.131.8.230:3000",  # Production frontend URL
+    ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
@@ -484,4 +489,87 @@ def delete_social_media_post(post_id: str, db: Session = Depends(get_db)):
         raise HTTPException(
             status_code=500, 
             detail=f"Internal server error: {str(e)}"
-        ) 
+        )
+
+
+@app.post("/api/upload-image")
+async def upload_image(file: UploadFile = File(...)):
+    """Upload image to external server and return the URL"""
+    try:
+        logger.info(f"Uploading image: {file.filename}")
+        
+        # Read the file content
+        file_content = await file.read()
+        
+        # Prepare form data for the external server
+        files = {"files": (file.filename, file_content, file.content_type)}
+        
+        # Upload to external server
+        async with httpx.AsyncClient() as client:
+            response = await client.post(
+                "http://165.227.123.243:8000/upload",
+                files=files,
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                result = response.json()
+                logger.info(f"Successfully uploaded image: {file.filename}")
+                return result
+            else:
+                logger.error(f"External server error: {response.status_code} - {response.text}")
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"External server error: {response.text}"
+                )
+                
+    except httpx.TimeoutException:
+        logger.error("Timeout uploading image to external server")
+        raise HTTPException(status_code=408, detail="Upload timeout")
+    except httpx.RequestError as e:
+        logger.error(f"Request error uploading image: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"External server error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error uploading image: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")
+
+
+@app.post("/api/webhook-proxy")
+async def proxy_webhook(data: list = Body(...)):
+    """Proxy webhook requests to n8n webhook to avoid CORS issues"""
+    try:
+        logger.info("Proxying webhook request to n8n")
+        
+        # Forward the request to the n8n webhook
+        async with httpx.AsyncClient() as client:
+            # Get webhook URL from environment variable
+            webhook_url = os.getenv("N8N_WEBHOOK_URL", "https://ultrasoundai.app.n8n.cloud/webhook/b2d454f5-3dde-4d56-9bff-5e1f23b7d94b")
+            
+            response = await client.post(
+                webhook_url,
+                json=data,
+                headers={"Content-Type": "application/json"},
+                timeout=30.0
+            )
+            
+            if response.status_code == 200:
+                logger.info("Successfully forwarded webhook request to n8n")
+                return {"message": "Webhook request forwarded successfully"}
+            else:
+                logger.error(f"N8n webhook error: {response.status_code} - {response.text}")
+                raise HTTPException(
+                    status_code=response.status_code,
+                    detail=f"N8n webhook error: {response.text}"
+                )
+                
+    except httpx.TimeoutException:
+        logger.error("Timeout forwarding webhook request to n8n")
+        raise HTTPException(status_code=408, detail="Webhook timeout")
+    except httpx.RequestError as e:
+        logger.error(f"Request error forwarding webhook: {str(e)}")
+        raise HTTPException(status_code=502, detail=f"Webhook error: {str(e)}")
+    except Exception as e:
+        logger.error(f"Unexpected error forwarding webhook: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Internal server error: {str(e)}")

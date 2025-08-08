@@ -42,71 +42,68 @@ const ContentPreview = ({ title, content, icon: Icon, isPrefilled = true }) => {
   };
 
   return (
-    <div className="bg-slate-50 border border-slate-200 rounded-2xl p-4 sm:p-6 hover:bg-slate-100 transition-all duration-300 relative group">
-      <div className="flex items-center justify-between mb-3 sm:mb-4">
-        <div className="flex items-center gap-2 sm:gap-3">
-          <div className="p-2 bg-slate-200 rounded-xl">
-            <Icon className="text-slate-600 text-sm sm:text-lg" />
+    <div className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 relative group overflow-hidden">
+      {/* Header */}
+      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 lg:p-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
+        <div className="flex items-center gap-3 min-w-0">
+          <div className="p-1.5 bg-slate-100 rounded-xl shadow-sm flex-shrink-0">
+            <Icon className="text-slate-600 text-base" />
           </div>
-          <h4 className="text-sm sm:text-lg font-medium text-slate-800">{title}</h4>
-          {isPrefilled && (
-            <span className="bg-emerald-100 text-emerald-700 text-xs px-2 sm:px-3 py-1 rounded-full border border-emerald-200">
-              Pre-filled
-            </span>
-          )}
+          <h4 className="text-base font-semibold text-slate-800 truncate">{title}</h4>
         </div>
         
         {/* Copy Button */}
         <button
           type="button"
           onClick={handleCopy}
-          className={`flex items-center gap-2 px-3 py-2 rounded-xl text-xs font-medium transition-all duration-300 transform hover:scale-105 active:scale-95 shadow-sm hover:shadow-md ${
+          className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-sm hover:shadow-md border flex-shrink-0 ${
             copied
-              ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 shadow-emerald-100'
-              : 'bg-slate-100 text-slate-600 hover:bg-slate-200 border border-slate-200 hover:border-slate-300 hover:shadow-slate-200'
+              ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-emerald-100'
+              : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:shadow-slate-200'
           }`}
           title="Copy content to clipboard"
           disabled={copied}
         >
           {copied ? (
-            <>
-              <FiCheck className="text-sm animate-pulse" />
-              <span className="font-semibold">Copied!</span>
-            </>
+            <FiCheck className="text-sm animate-pulse" />
           ) : (
-            <>
-              <FiCopy className="text-sm group-hover:rotate-12 transition-transform duration-300" />
-              <span>Copy</span>
-            </>
+            <FiCopy className="text-sm group-hover:rotate-12 transition-transform duration-300" />
           )}
         </button>
       </div>
       
-      <div className={`bg-white rounded-xl p-3 sm:p-4 border-l-4 transition-all duration-300 relative ${
-        copied ? 'border-emerald-300 shadow-lg shadow-emerald-100' : 'border-slate-300'
-      }`}>
-        <p className="text-slate-600 text-xs sm:text-sm leading-relaxed whitespace-pre-wrap">
-          {content || 'No content available'}
-        </p>
-        
-        {/* Success indicator when copied */}
-        {copied && (
-          <div className="absolute top-2 right-2 animate-bounce">
-            <div className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-lg shadow-lg">
-              ✓ Copied!
+      {/* Content Area */}
+      <div className="p-3 sm:p-4 lg:p-3">
+        <div className={`bg-slate-50 rounded-xl p-3 sm:p-4 lg:p-3 border-l-4 transition-all duration-300 relative ${
+          copied ? 'border-emerald-400 shadow-lg shadow-emerald-100' : 'border-slate-300'
+        }`}>
+          <div className="relative">
+            {/* Content with fixed height and scroll */}
+            <div className="h-40 sm:h-48 overflow-y-auto">
+              <p className="text-slate-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap font-medium">
+                {content}
+              </p>
+            </div>
+            
+            {/* Character count */}
+            <div className="mt-2 text-xs text-slate-400 font-mono text-center">
+              {content.length} characters
             </div>
           </div>
-        )}
-        
-        {/* Subtle copy indicator on hover */}
-        {!copied && (
-          <div className="absolute top-2 right-2 opacity-0 group-hover:opacity-100 transition-opacity duration-300">
-            <div className="bg-slate-800 text-white text-xs px-2 py-1 rounded-lg shadow-lg">
-              Click copy button to copy content
+          
+          {/* Success indicator when copied */}
+          {copied && (
+            <div className="absolute top-2 right-2 animate-bounce">
+              <div className="bg-emerald-500 text-white text-xs px-2 py-1 rounded-lg shadow-lg font-medium">
+                ✓ Copied!
+              </div>
             </div>
-          </div>
-        )}
+          )}
+        </div>
       </div>
+      
+      {/* Subtle hover effect */}
+      <div className="absolute inset-0 bg-gradient-to-r from-transparent via-white/5 to-transparent opacity-0 group-hover:opacity-100 transition-opacity duration-500 pointer-events-none"></div>
     </div>
   );
 };

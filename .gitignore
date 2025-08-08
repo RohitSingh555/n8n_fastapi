@@ -1,2 +1,3 @@
 backend/app/__pycache__/*
 backend/alembic/versions/__pycache__/*
+backend/.env

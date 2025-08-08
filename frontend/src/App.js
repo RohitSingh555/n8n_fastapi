@@ -307,58 +307,62 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       <button
         onClick={() => handleTabChange(id)}
         disabled={!canAccess}
-        className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium transition-all duration-300 text-xs sm:text-sm whitespace-nowrap ${
+                        className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium transition-all duration-300 text-xs sm:text-sm whitespace-nowrap ${
           isActive 
-            ? 'bg-slate-800 text-white shadow-md' 
+            ? 'bg-[#5A67A5] text-white shadow-md' 
             : isCompleted
-            ? 'bg-emerald-100 text-emerald-700 border border-emerald-200 hover:bg-emerald-200'
+            ? 'bg-[#E8EBF5] text-[#5A67A5] border border-[#A8B3D4] hover:bg-[#D5D9E4]'
             : canAccess
-            ? 'text-slate-600 hover:text-slate-800 hover:bg-slate-100'
-            : 'text-slate-400 bg-slate-100 cursor-not-allowed'
+            ? 'text-[#5A67A5] hover:text-[#3E3E3E] hover:bg-[#E8EBF5]'
+            : 'text-[#A8B3D4] bg-[#E8EBF5] cursor-not-allowed'
         }`}
       >
         <Icon className="text-sm sm:text-lg" />
         <span className="hidden sm:inline">{label}</span>
         <span className="sm:hidden">{label.split(' ')[0]}</span>
-        {isCompleted && <FiCheck className="text-emerald-600 text-xs sm:text-sm" />}
-        {!canAccess && <FiLock className="text-slate-400 text-xs sm:text-sm" />}
+        {isCompleted && <FiCheck className="text-[#5A67A5] text-xs sm:text-sm" />}
+        {!canAccess && <FiLock className="text-[#A8B3D4] text-xs sm:text-sm" />}
       </button>
     );
   };
 
   return (
-    <div className="min-h-screen bg-gradient-to-br from-slate-50 to-slate-100">
+    <div className="min-h-screen bg-gradient-to-br from-[#E8EBF5] to-[#A8B3D4]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="max-w-7xl mx-auto">
+        <div className="max-w-4xl mx-auto">
           {/* Header */}
           <header className="text-center mb-8 sm:mb-12">
             {/* Logo */}
-            <div className="flex justify-center mb-6">
-              <div className="bg-white rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105">
+            <div className="flex justify-center mb-8">
+              <div className="relative bg-[#FFFFFF] rounded-2xl p-4 shadow-lg hover:shadow-xl transition-all duration-300 transform hover:scale-105 overflow-hidden group">
                 <img 
                   src={logo} 
                   alt="n8n Automation Logo" 
-                  className="h-16 w-auto sm:h-20 md:h-24 object-contain"
+                  className="h-20 w-auto sm:h-28 md:h-32 lg:h-36 object-contain relative z-10"
                 />
+                {/* Violet Line Animation */}
+                <div className="absolute inset-0 -translate-x-full group-hover:translate-x-full transition-transform duration-1000 ease-out">
+                  <div className="w-full h-0.5 bg-gradient-to-r from-transparent via-[#5A67A5]/60 to-transparent"></div>
+                </div>
               </div>
             </div>
             
-            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-slate-800 mb-3 sm:mb-4 animate-fade-in">
+            <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-[#3E3E3E] mb-3 sm:mb-4 animate-fade-in">
               n8n Execution Feedback
             </h1>
-            <p className="text-slate-600 text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
+            <p className="text-[#5A67A5] text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
               Collect and manage feedback for n8n execution results
             </p>
             <div className="flex justify-center gap-4 mt-6">
               <button 
                 onClick={() => navigate('/')}
-                className="px-4 py-2 bg-slate-800 text-white rounded-xl hover:bg-slate-700 transition-all duration-200 text-sm shadow-md"
+                className="px-4 py-2 bg-[#5A67A5] text-white rounded-xl hover:bg-[#4A5A95] transition-all duration-200 text-sm shadow-md"
               >
                 Feedback Form
               </button>
               <button 
                 onClick={() => navigate('/social-media')}
-                className="px-4 py-2 bg-slate-600 text-white rounded-xl hover:bg-slate-500 transition-all duration-200 text-sm"
+                className="px-4 py-2 bg-[#A8B3D4] text-[#3E3E3E] rounded-xl hover:bg-[#9BA6C7] transition-all duration-200 text-sm"
               >
                 Social Media Form
               </button>
@@ -366,17 +370,17 @@ To all the healthcare providers out there: what's the biggest challenge AI could
           </header>
 
           {/* Load Existing Feedback / Create New */}
-          <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm hover:shadow-md transition-all duration-300">
+          <div className="bg-[#FFFFFF] border border-[#D5D9E4] rounded-2xl p-4 sm:p-6 mb-6 sm:mb-8 shadow-sm hover:shadow-md transition-all duration-300">
             <div className="flex flex-col sm:flex-row sm:items-center gap-4">
               <div className="flex items-center gap-3 sm:gap-4">
-                <div className="p-2 bg-slate-100 rounded-xl">
-                  {isEditMode ? <FiEdit3 className="text-slate-600 text-lg" /> : <FiEye className="text-slate-600 text-lg" />}
+                <div className="p-2 bg-[#E8EBF5] rounded-xl">
+                  {isEditMode ? <FiEdit3 className="text-[#5A67A5] text-lg" /> : <FiEye className="text-[#5A67A5] text-lg" />}
                 </div>
                 <div className="flex-1">
-                  <h3 className="text-base sm:text-lg font-medium text-slate-800 mb-1 sm:mb-2">
+                  <h3 className="text-base sm:text-lg font-medium text-[#3E3E3E] mb-1 sm:mb-2">
                     {isEditMode ? 'Editing Existing Feedback' : 'Load Existing Feedback'}
                   </h3>
-                  <p className="text-slate-500 text-xs sm:text-sm">
+                  <p className="text-[#5A67A5] text-xs sm:text-sm">
                     {isEditMode 
                       ? `Currently editing feedback with ID: ${submissionId}` 
                       : 'Enter a submission ID to load and edit existing feedback'
@@ -390,12 +394,12 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                     <input
                       type="text"
                       placeholder="Enter submission ID"
-                      className="bg-slate-50 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300 transition-all duration-200 text-sm sm:text-base"
+                      className="bg-[#E8EBF5] border border-[#D5D9E4] rounded-xl px-3 sm:px-4 py-2 text-[#3E3E3E] placeholder-[#5A67A5] focus:outline-none focus:ring-2 focus:ring-[#5A67A5] focus:border-[#5A67A5] transition-all duration-200 text-sm sm:text-base"
                       onChange={(e) => setSubmissionId(e.target.value)}
                     />
                     <button
                       onClick={() => loadExistingFeedback(submissionId)}
-                      className="bg-slate-800 text-white px-4 py-2 rounded-xl hover:bg-slate-700 transition-all duration-200 text-sm sm:text-base"
+                      className="bg-[#5A67A5] text-white px-4 py-2 rounded-xl hover:bg-[#4A5A95] transition-all duration-200 text-sm sm:text-base"
                     >
                       Load
                     </button>
@@ -411,39 +415,39 @@ To all the healthcare providers out there: what's the biggest challenge AI could
 
           <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">
             {/* Basic Information */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
-              <h2 className="text-xl sm:text-2xl font-medium text-slate-800 mb-4 sm:mb-6 flex items-center gap-3">
-                <div className="p-2 bg-slate-100 rounded-xl">
-                  <FiEdit3 className="text-slate-600 text-lg" />
+            <div className="bg-[#FFFFFF] border border-[#D5D9E4] rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
+              <h2 className="text-xl sm:text-2xl font-medium text-[#3E3E3E] mb-4 sm:mb-6 flex items-center gap-3">
+                <div className="p-2 bg-[#E8EBF5] rounded-xl">
+                  <FiEdit3 className="text-[#5A67A5] text-lg" />
                 </div>
                 Basic Information
               </h2>
               
               <div className="grid grid-cols-1 md:grid-cols-2 gap-4 sm:gap-6">
                 <div>
-                  <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                    n8n Execution ID <span className="text-slate-500 text-xs sm:text-sm">(Read-only)</span>
+                  <label className="block text-[#3E3E3E] font-medium mb-2 text-sm sm:text-base">
+                    n8n Execution ID <span className="text-[#5A67A5] text-xs sm:text-sm">(Read-only)</span>
                   </label>
                   <input
                     type="text"
                     name="n8n_execution_id"
                     value={formData.n8n_execution_id}
                     readOnly
-                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-slate-600 cursor-not-allowed text-sm sm:text-base"
+                    className="w-full bg-[#E8EBF5] border border-[#D5D9E4] rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-[#5A67A5] cursor-not-allowed text-sm sm:text-base"
                     placeholder="Execution ID will be loaded automatically"
                   />
                 </div>
                 
                 <div>
-                  <label className="block text-slate-700 font-medium mb-2 text-sm sm:text-base">
-                    Email <span className="text-slate-500 text-xs sm:text-sm">(Read-only)</span>
+                  <label className="block text-[#3E3E3E] font-medium mb-2 text-sm sm:text-base">
+                    Email <span className="text-[#5A67A5] text-xs sm:text-sm">(Read-only)</span>
                   </label>
                   <input
                     type="email"
                     name="email"
                     value={formData.email}
                     readOnly
-                    className="w-full bg-slate-100 border border-slate-200 rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-slate-600 cursor-not-allowed text-sm sm:text-base"
+                    className="w-full bg-[#E8EBF5] border border-[#D5D9E4] rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-[#5A67A5] cursor-not-allowed text-sm sm:text-base"
                     placeholder="Email will be loaded automatically"
                   />
                 </div>
@@ -451,8 +455,8 @@ To all the healthcare providers out there: what's the biggest challenge AI could
             </div>
 
             {/* Content Tabs */}
-            <div className="bg-white border border-slate-200 rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
-              <div className="sticky top-0 z-10 bg-white border-b border-slate-200 -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 mb-6 sm:mb-8">
+            <div className="bg-[#FFFFFF] border border-[#D5D9E4] rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="sticky top-0 z-10 bg-[#FFFFFF] border-b border-[#D5D9E4] -mx-4 sm:-mx-6 lg:-mx-8 px-4 sm:px-6 lg:px-8 py-4 mb-6 sm:mb-8">
                 <div className="flex gap-2 overflow-x-auto pb-2">
                   <TabButton 
                     id="linkedin" 
@@ -497,8 +501,8 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 disabled={loading || !canSubmit()}
                 className={`px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-medium transition-all duration-300 shadow-sm hover:shadow-md text-sm sm:text-base ${
                   canSubmit()
-                    ? 'bg-slate-800 text-white hover:bg-slate-700'
-                    : 'bg-slate-200 text-slate-400 cursor-not-allowed'
+                    ? 'bg-[#5A67A5] text-white hover:bg-[#4A5A95]'
+                    : 'bg-[#D5D9E4] text-[#A8B3D4] cursor-not-allowed'
                 }`}
               >
                 {loading ? (

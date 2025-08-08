@@ -23,7 +23,7 @@ services:
     environment:
       DATABASE_URL: postgresql://postgres:postgres@postgres:5432/n8n_feedback
     ports:
-      - "8001:8000"
+      - "104.131.8.230:8000:8000"
     depends_on:
       - postgres
     volumes:
@@ -39,7 +39,7 @@ services:
       dockerfile: Dockerfile
     container_name: n8n_feedback_frontend
     ports:
-      - "3001:3000"
+      - "104.131.8.230:3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -48,9 +48,7 @@ services:
     networks:
       - n8n_network
     environment:
-      - REACT_APP_API_URL=http://localhost:8001
-      - CHOKIDAR_USEPOLLING=true
-      - WATCHPACK_POLLING=true
+      - REACT_APP_API_URL=http://104.131.8.230:8000
 
 volumes:
   postgres_data:
