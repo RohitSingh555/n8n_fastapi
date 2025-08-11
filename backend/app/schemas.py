@@ -32,6 +32,12 @@ class FeedbackSubmissionBase(BaseModel):
 class FeedbackSubmissionCreate(FeedbackSubmissionBase):
     pass
 
+class FeedbackSubmissionCreateResponse(BaseModel):
+    status_code: int
+    submission_id: str
+    feedback_form_link: str
+    message: str
+
 class FeedbackSubmissionUpdate(BaseModel):
     n8n_execution_id: Optional[str] = None
     email: Optional[str] = None

@@ -11,16 +11,42 @@ import httpx
 import os
 
 from . import models, schemas
-from .database import engine, get_db
+from .database import engine, get_db, DATABASE_URL
+from .database_utils import wait_for_database, ensure_database_exists
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
-# Create database tables
-models.Base.metadata.create_all(bind=engine)
+# Wait for database to be ready and create tables
+def initialize_database():
+    """Initialize database connection and create tables"""
+    # Wait for database to be ready
+    logger.info("Waiting for MySQL database to be ready...")
+    if not wait_for_database(DATABASE_URL, max_retries=10, retry_interval=3):
+        logger.error("Failed to connect to database. Exiting...")
+        raise RuntimeError("Database connection failed")
+    
+    # Ensure database exists
+    if not ensure_database_exists(DATABASE_URL):
+        logger.error("Failed to ensure database exists. Exiting...")
+        raise RuntimeError("Database initialization failed")
+    
+    # Create database tables
+    try:
+        models.Base.metadata.create_all(bind=engine)
+        logger.info("Database tables created successfully")
+    except Exception as e:
+        logger.error(f"Failed to create database tables: {str(e)}")
+        raise RuntimeError(f"Table creation failed: {str(e)}")
+
+# Initialize database
+initialize_database()
 
 app = FastAPI(title="n8n Execution Feedback API", version="1.0.0")
+
+# Get frontend URL from environment variable or use default
+FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
 # Configure CORS
 app.add_middleware(
@@ -28,13 +54,14 @@ app.add_middleware(
     allow_origins=[
         "http://localhost:3000",  # React app URL
         "http://104.131.8.230:3000",  # Production frontend URL
+        FRONTEND_URL,  # Environment variable frontend URL
     ],
     allow_credentials=True,
     allow_methods=["*"],
     allow_headers=["*"],
 )
 
-@app.post("/api/feedback", response_model=schemas.FeedbackSubmissionResponse)
+@app.post("/api/feedback", response_model=schemas.FeedbackSubmissionCreateResponse)
 def create_feedback_submission(
     feedback: schemas.FeedbackSubmissionCreate,
     db: Session = Depends(get_db)
@@ -52,7 +79,16 @@ def create_feedback_submission(
         db.refresh(db_feedback)
         
         logger.info(f"Successfully created feedback submission with ID: {db_feedback.submission_id}")
-        return db_feedback
+        
+        # Create the response with the required format
+        feedback_form_link = f"{FRONTEND_URL}/feedback/{db_feedback.submission_id}"
+        
+        return schemas.FeedbackSubmissionCreateResponse(
+            status_code=201,
+            submission_id=db_feedback.submission_id,
+            feedback_form_link=feedback_form_link,
+            message="Feedback submission was stored successfully! You can provide feedback using the link above."
+        )
         
     except IntegrityError as e:
         logger.error(f"Database integrity error: {str(e)}")

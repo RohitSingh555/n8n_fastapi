@@ -18,7 +18,7 @@ depends_on = None
 
 def upgrade() -> None:
     # Add email column to feedback_submissions table
-    op.add_column('feedback_submissions', sa.Column('email', sa.String(), nullable=False))
+    op.add_column('feedback_submissions', sa.Column('email', sa.String(255), nullable=False))
 
 
 def downgrade() -> None:

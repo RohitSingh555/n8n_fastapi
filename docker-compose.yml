@@ -1,18 +1,28 @@
 services:
-  # PostgreSQL Database
-  postgres:
-    image: postgres:15
+  # MySQL Database
+  mysql:
+    image: mysql:8.0
     container_name: n8n_feedback_db
     environment:
-      POSTGRES_DB: n8n_feedback
-      POSTGRES_USER: postgres
-      POSTGRES_PASSWORD: postgres
+      MYSQL_ROOT_PASSWORD: root
+      MYSQL_DATABASE: n8n_feedback
+      MYSQL_USER: n8n_user
+      MYSQL_PASSWORD: n8n_password
+      MYSQL_DEFAULT_AUTHENTICATION_PLUGIN: mysql_native_password
+      MYSQL_ROOT_HOST: '%'
     ports:
-      - "5432:5432"
+      - "3306:3306"
     volumes:
-      - postgres_data:/var/lib/postgresql/data
+      - mysql_data:/var/lib/mysql
+      - ./mysql_init:/docker-entrypoint-initdb.d
     networks:
       - n8n_network
+    healthcheck:
+      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "n8n_user", "-p$$MYSQL_PASSWORD"]
+      interval: 10s
+      timeout: 5s
+      retries: 5
+      start_period: 30s
 
   # FastAPI Backend
   backend:
@@ -21,11 +31,12 @@ services:
       dockerfile: Dockerfile
     container_name: n8n_feedback_backend
     environment:
-      DATABASE_URL: postgresql://postgres:postgres@postgres:5432/n8n_feedback
+      DATABASE_URL: mysql+pymysql://n8n_user:n8n_password@mysql:3306/n8n_feedback
     ports:
       - "104.131.8.230:8000:8000"
     depends_on:
-      - postgres
+      mysql:
+        condition: service_healthy
     volumes:
       - ./backend:/app
     networks:
@@ -51,7 +62,7 @@ services:
       - REACT_APP_API_URL=http://104.131.8.230:8000
 
 volumes:
-  postgres_data:
+  mysql_data:
 
 networks:
   n8n_network:
