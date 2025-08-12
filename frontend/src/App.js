@@ -1,16 +1,14 @@
 import React, { useState, useEffect } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
-import { FiSend, FiCheck, FiAlertCircle, FiLinkedin, FiTwitter, FiImage, FiEdit3, FiPlus, FiEye, FiLock, FiUnlock } from 'react-icons/fi';
-import axios from 'axios';
+import { FiSend, FiCheck, FiLinkedin, FiTwitter, FiImage, FiEdit3, FiEye } from 'react-icons/fi';
 
-// Import modular components
 import Modal from './components/Modal';
 import SuccessPage from './components/SuccessPage';
 import TabContent from './components/TabContent';
 import SocialMediaForm from './components/SocialMediaForm';
-
-// Import logo
 import logo from './assets/logo.png';
+
+
 
 function App() {
   return (
@@ -102,7 +100,6 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   };
 
   const [formData, setFormData] = useState(initialFormData);
-  const [originalFormData, setOriginalFormData] = useState(initialFormData);
   const [loading, setLoading] = useState(false);
   const [modal, setModal] = useState({ isOpen: false, title: '', message: '', type: 'info' });
   const [isEditMode, setIsEditMode] = useState(false);
@@ -114,6 +111,8 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     twitter: false,
     images: false
   });
+  const [webhookLoading, setWebhookLoading] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState(null);
 
   // Check if tabs have content
   const hasLinkedInContent = () => {
@@ -143,20 +142,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     return tabs;
   };
 
-  // Check if any field has been modified from its original state
-  const hasChanges = () => {
-    const editableFields = [
-      'email', 'linkedin_feedback', 'linkedin_chosen_llm', 'linkedin_custom_content',
-      'x_feedback', 'x_chosen_llm', 'x_custom_content',
-      'image_feedback', 'image_chosen_llm'
-    ];
-    
-    return editableFields.some(field => {
-      const currentValue = formData[field] || '';
-      const originalValue = originalFormData[field] || '';
-      return currentValue !== originalValue;
-    });
-  };
+
 
   // Load feedback from URL if submissionId is provided
   useEffect(() => {
@@ -190,18 +176,18 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     switch (tabName) {
       case 'linkedin':
         // For LinkedIn, any one of the three fields should be filled (mutual exclusion)
-        return formData.linkedin_feedback.trim() !== '' || 
-               formData.linkedin_chosen_llm !== '' || 
-               formData.linkedin_custom_content.trim() !== '';
+        return (formData.linkedin_feedback && formData.linkedin_feedback.trim() !== '') || 
+               (formData.linkedin_chosen_llm && formData.linkedin_chosen_llm !== '') || 
+               (formData.linkedin_custom_content && formData.linkedin_custom_content.trim() !== '');
       case 'twitter':
         // For Twitter, any one of the three fields should be filled (mutual exclusion)
-        return formData.x_feedback.trim() !== '' || 
-               formData.x_chosen_llm !== '' || 
-               formData.x_custom_content.trim() !== '';
+        return (formData.x_feedback && formData.x_feedback.trim() !== '') || 
+               (formData.x_chosen_llm && formData.x_chosen_llm !== '') || 
+               (formData.x_custom_content && formData.x_custom_content.trim() !== '');
       case 'images':
         // For Images, any one of the two fields should be filled (mutual exclusion)
-        return formData.image_feedback.trim() !== '' || 
-               formData.image_chosen_llm !== '';
+        return (formData.image_feedback && formData.image_feedback.trim() !== '') || 
+               (formData.image_chosen_llm && formData.image_chosen_llm !== '');
       default:
         return false;
     }
@@ -214,7 +200,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       twitter: validateTab('twitter'),
       images: validateTab('images')
     });
-  }, [formData]);
+  }, [formData, validateTab]);
 
   const handleInputChange = (e) => {
     const { name, value } = e.target;
@@ -252,24 +238,93 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     setLoading(true);
 
     try {
-      const response = await axios.put(`/api/feedback/${submissionId}`, formData);
-      setModal({
-        isOpen: true,
-        title: 'Success!',
-        message: `Feedback submitted successfully! Submission ID: ${response.data.submission_id}`,
-        type: 'success'
-      });
+      let response;
+      let data;
+      
+      if (isEditMode && submissionId) {
+        // Update existing feedback
+        response = await fetch(`/api/feedback/${submissionId}`, {
+          method: 'PUT',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        data = await response.json();
+        
+        // Submit updated feedback to webhook
+        try {
+          await fetch('/api/submit-feedback-webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ submission_id: submissionId })
+          });
+        } catch (webhookError) {
+          console.warn('Webhook submission failed:', webhookError);
+          // Don't fail the main operation if webhook fails
+        }
+        
+        setModal({
+          isOpen: true,
+          title: 'Success!',
+          message: `Feedback updated successfully! Submission ID: ${data.submission_id}`,
+          type: 'success'
+        });
+      } else {
+        // Create new feedback submission
+        response = await fetch('/api/feedback', {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+        
+        if (!response.ok) {
+          throw new Error(`HTTP error! status: ${response.status}`);
+        }
+        
+        data = await response.json();
+        
+        // Submit new feedback to webhook
+        try {
+          await fetch('/api/submit-feedback-webhook', {
+            method: 'POST',
+            headers: {
+              'Content-Type': 'application/json',
+            },
+            body: JSON.stringify({ submission_id: data.submission_id })
+          });
+        } catch (webhookError) {
+          console.warn('Webhook submission failed:', webhookError);
+          // Don't fail the main operation if webhook fails
+        }
+        
+        setModal({
+          isOpen: true,
+          title: 'Success!',
+          message: `Feedback submitted successfully! Submission ID: ${data.submission_id}`,
+          type: 'success'
+        });
+      }
       
       // Navigate to success page after a short delay
       setTimeout(() => {
-        navigate(`/success/${response.data.submission_id}`);
+        navigate(`/success/${data.submission_id}`);
       }, 2000);
       
     } catch (error) {
       setModal({
         isOpen: true,
         title: 'Error',
-        message: error.response?.data?.detail || 'Failed to submit feedback. Please try again.',
+        message: error.message || 'Failed to submit feedback. Please try again.',
         type: 'error'
       });
     } finally {
@@ -279,9 +334,12 @@ To all the healthcare providers out there: what's the biggest challenge AI could
 
   const loadExistingFeedback = async (id) => {
     try {
-      const response = await axios.get(`/api/feedback/${id}`);
-      setFormData(response.data);
-      setOriginalFormData(response.data); // Store original state for comparison
+      const response = await fetch(`/api/feedback/${id}`);
+      if (!response.ok) {
+        throw new Error(`HTTP error! status: ${response.status}`);
+      }
+      const data = await response.json();
+      setFormData(data);
       setSubmissionId(id);
       setIsEditMode(true);
       setVisitedTabs(new Set(['linkedin', 'twitter', 'images'])); // Mark all tabs as visited for existing feedback
@@ -290,18 +348,67 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       setModal({
         isOpen: true,
         title: 'Error',
-        message: error.response?.data?.detail || 'Failed to load feedback. Please check the ID.',
+        message: error.message || 'Failed to load feedback. Please check the ID.',
         type: 'error'
       });
     }
   };
 
-  const TabButton = ({ id, label, icon: Icon, isActive, isCompleted, isVisited }) => {
+  const handleWebhookSubmit = async () => {
+    if (!submissionId) {
+      setWebhookStatus({
+        type: 'error',
+        message: 'No submission ID available',
+        details: 'Please save your feedback first before submitting to webhook.'
+      });
+      return;
+    }
+
+    setWebhookLoading(true);
+    setWebhookStatus(null);
+    
+    try {
+      const response = await fetch('/api/submit-feedback-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ submission_id: submissionId })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setWebhookStatus({
+          type: 'success',
+          message: 'Webhook submitted successfully!',
+          details: result.message
+        });
+      } else {
+        const errorData = await response.json();
+        setWebhookStatus({
+          type: 'error',
+          message: 'Webhook submission failed',
+          details: errorData.detail || 'Unknown error occurred'
+        });
+      }
+    } catch (error) {
+      setWebhookStatus({
+        type: 'error',
+        message: 'Webhook submission failed',
+        details: error.message || 'Network error occurred'
+      });
+    } finally {
+      setWebhookLoading(false);
+    }
+  };
+
+  const TabButton = ({ id, label, icon: Icon, isActive, isCompleted, isVisited, isEditMode }) => {
     const canAccess = canAccessTab(id);
     const availableTabs = getAvailableTabs();
     
-    // Don't render if tab has no content
-    if (!availableTabs.includes(id)) return null;
+    // In edit mode, always show all tabs so users can access all form fields
+    // Otherwise, only show tabs that have content
+    if (!isEditMode && !availableTabs.includes(id)) return null;
     
     return (
       <button
@@ -321,7 +428,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
         <span className="hidden sm:inline">{label}</span>
         <span className="sm:hidden">{label.split(' ')[0]}</span>
         {isCompleted && <FiCheck className="text-[#5A67A5] text-xs sm:text-sm" />}
-        {!canAccess && <FiLock className="text-[#A8B3D4] text-xs sm:text-sm" />}
+        {!canAccess && <FiEye className="text-[#A8B3D4] text-xs sm:text-sm" />}
       </button>
     );
   };
@@ -465,6 +572,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                     isActive={activeTab === 'linkedin'}
                     isCompleted={tabValidation.linkedin}
                     isVisited={visitedTabs.has('linkedin')}
+                    isEditMode={isEditMode}
                   />
                   <TabButton 
                     id="twitter" 
@@ -473,6 +581,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                     isActive={activeTab === 'twitter'}
                     isCompleted={tabValidation.twitter}
                     isVisited={visitedTabs.has('twitter')}
+                    isEditMode={isEditMode}
                   />
                   <TabButton 
                     id="images" 
@@ -481,6 +590,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                     isActive={activeTab === 'images'}
                     isCompleted={tabValidation.images}
                     isVisited={visitedTabs.has('images')}
+                    isEditMode={isEditMode}
                   />
                 </div>
               </div>
@@ -491,6 +601,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 formData={formData}
                 handleInputChange={handleInputChange}
                 tabValidation={tabValidation}
+                isEditMode={isEditMode}
               />
             </div>
 
@@ -513,12 +624,48 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 ) : (
                   <div className="flex items-center gap-3">
                     <FiSend />
-                    <span>Submit Feedback</span>
+                    <span>{isEditMode ? 'Update Feedback' : 'Submit Feedback'}</span>
                   </div>
                 )}
               </button>
               
-
+              {/* Webhook Submission Button - Only show in edit mode when we have a submission ID */}
+              {isEditMode && submissionId && (
+                <div className="mt-4">
+                  <button
+                    type="button"
+                    onClick={handleWebhookSubmit}
+                    disabled={webhookLoading}
+                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-medium transition-all duration-300 shadow-sm hover:shadow-md text-sm sm:text-base bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
+                  >
+                    {webhookLoading ? (
+                      <div className="flex items-center gap-3">
+                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
+                        <span>Submitting to Webhook...</span>
+                      </div>
+                    ) : (
+                      <div className="flex items-center gap-3">
+                        <FiSend />
+                        <span>Submit to Webhook</span>
+                      </div>
+                    )}
+                  </button>
+                  
+                  {/* Webhook Status */}
+                  {webhookStatus && (
+                    <div className={`mt-4 p-3 rounded-lg text-sm max-w-md mx-auto ${
+                      webhookStatus.type === 'success' 
+                        ? 'bg-green-100 text-green-800 border border-green-200' 
+                        : 'bg-red-100 text-red-800 border border-red-200'
+                    }`}>
+                      <div className="font-medium">{webhookStatus.message}</div>
+                      {webhookStatus.details && (
+                        <div className="mt-1 opacity-80">{webhookStatus.details}</div>
+                      )}
+                    </div>
+                  )}
+                </div>
+              )}
             </div>
           </form>
         </div>

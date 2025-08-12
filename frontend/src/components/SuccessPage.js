@@ -1,10 +1,52 @@
-import React from 'react';
-import { FiCheck, FiHome, FiEdit3, FiDownload, FiShare2 } from 'react-icons/fi';
+import React, { useState } from 'react';
+import { FiCheck, FiHome, FiEdit3, FiDownload, FiShare2, FiSend } from 'react-icons/fi';
 
 // Import logo
 import logo from '../assets/logo.png';
 
 const SuccessPage = ({ submissionId, onReset, onContinueEditing }) => {
+  const [webhookLoading, setWebhookLoading] = useState(false);
+  const [webhookStatus, setWebhookStatus] = useState(null);
+
+  const handleWebhookSubmit = async () => {
+    setWebhookLoading(true);
+    setWebhookStatus(null);
+    
+    try {
+      const response = await fetch('/api/submit-feedback-webhook', {
+        method: 'POST',
+        headers: {
+          'Content-Type': 'application/json',
+        },
+        body: JSON.stringify({ submission_id: submissionId })
+      });
+      
+      if (response.ok) {
+        const result = await response.json();
+        setWebhookStatus({
+          type: 'success',
+          message: 'Webhook submitted successfully!',
+          details: result.message
+        });
+      } else {
+        const errorData = await response.json();
+        setWebhookStatus({
+          type: 'error',
+          message: 'Webhook submission failed',
+          details: errorData.detail || 'Unknown error occurred'
+        });
+      }
+    } catch (error) {
+      setWebhookStatus({
+        type: 'error',
+        message: 'Webhook submission failed',
+        details: error.message || 'Network error occurred'
+      });
+    } finally {
+      setWebhookLoading(false);
+    }
+  };
+
   return (
     <div className="min-h-screen bg-gradient-to-br from-emerald-50 to-emerald-100 flex items-center justify-center p-4">
       <div className="max-w-2xl w-full">
@@ -58,6 +100,33 @@ const SuccessPage = ({ submissionId, onReset, onContinueEditing }) => {
               <FiEdit3 />
               <span>Continue Editing</span>
             </button>
+          </div>
+          
+          {/* Webhook Submission */}
+          <div className="border-t border-slate-200 pt-6 mb-6">
+            <div className="text-slate-500 text-sm mb-4">Submit to External System</div>
+            <button
+              onClick={handleWebhookSubmit}
+              disabled={webhookLoading}
+              className="flex items-center justify-center gap-3 bg-blue-600 text-white px-6 py-3 rounded-2xl hover:bg-blue-700 disabled:bg-blue-400 transition-all duration-200 font-medium mx-auto"
+            >
+              <FiSend />
+              <span>{webhookLoading ? 'Submitting...' : 'Submit to Webhook'}</span>
+            </button>
+            
+            {/* Webhook Status */}
+            {webhookStatus && (
+              <div className={`mt-4 p-3 rounded-lg text-sm ${
+                webhookStatus.type === 'success' 
+                  ? 'bg-green-100 text-green-800 border border-green-200' 
+                  : 'bg-red-100 text-red-800 border border-red-200'
+              }`}>
+                <div className="font-medium">{webhookStatus.message}</div>
+                {webhookStatus.details && (
+                  <div className="mt-1 opacity-80">{webhookStatus.details}</div>
+                )}
+              </div>
+            )}
           </div>
           
           {/* Additional Actions */}

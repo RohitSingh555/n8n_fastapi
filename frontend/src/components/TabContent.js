@@ -8,7 +8,8 @@ const TabContent = ({
   activeTab, 
   formData, 
   handleInputChange, 
-  tabValidation 
+  tabValidation,
+  isEditMode = false // Add isEditMode prop
 }) => {
   // Check if tab has content
   const hasLinkedInContent = () => {
@@ -29,10 +30,13 @@ const TabContent = ({
            formData.gpt1_image_url?.trim();
   };
 
-  // If no content, don't render the tab
-  if (activeTab === 'linkedin' && !hasLinkedInContent()) return null;
-  if (activeTab === 'twitter' && !hasTwitterContent()) return null;
-  if (activeTab === 'images' && !hasImageContent()) return null;
+  // If no content and not in edit mode, don't render the tab
+  // In edit mode, always render so users can see and edit all fields
+  if (!isEditMode) {
+    if (activeTab === 'linkedin' && !hasLinkedInContent()) return null;
+    if (activeTab === 'twitter' && !hasTwitterContent()) return null;
+    if (activeTab === 'images' && !hasImageContent()) return null;
+  }
 
   const linkedinOptions = [
     { value: 'Grok', label: 'Grok', description: 'AI-powered content generation' },

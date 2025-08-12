@@ -35,6 +35,7 @@ class FeedbackSubmissionCreate(FeedbackSubmissionBase):
 class FeedbackSubmissionCreateResponse(BaseModel):
     status_code: int
     submission_id: str
+    feedback_id: str  # Added for webhook compatibility
     feedback_form_link: str
     message: str
 

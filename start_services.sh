@@ -31,6 +31,28 @@ check_service_health() {
     return 1
 }
 
+# Function to check if database is ready
+check_database_ready() {
+    local max_wait=60
+    local wait_time=0
+    
+    echo "⏳ Waiting for database to be ready..."
+    
+    while [ $wait_time -lt $max_wait ]; do
+        if docker compose exec -T mysql mysql -u n8n_user -pn8n_password -e "USE n8n_feedback; SELECT 1;" >/dev/null 2>&1; then
+            echo "✅ Database is ready!"
+            return 0
+        fi
+        
+        echo "⏳ Database not ready yet... (${wait_time}s/${max_wait}s)"
+        sleep 5
+        wait_time=$((wait_time + 5))
+    done
+    
+    echo "❌ Database failed to become ready within ${max_wait}s"
+    return 1
+}
+
 # Stop any existing services and clean up orphans
 echo "🛑 Stopping existing services..."
 docker compose down --remove-orphans
@@ -50,6 +72,17 @@ if ! check_service_health mysql; then
     exit 1
 fi
 
+# Give MySQL initialization scripts more time to run
+echo "⏳ Waiting for MySQL initialization scripts to complete..."
+sleep 10
+
+# Wait for database to be ready (this ensures initialization scripts have completed)
+if ! check_database_ready; then
+    echo "❌ Database failed to become ready"
+    docker compose logs mysql
+    exit 1
+fi
+
 # Start backend service
 echo "🔧 Starting FastAPI backend..."
 docker compose up backend -d
@@ -62,19 +95,8 @@ sleep 15
 echo "📋 Backend logs:"
 docker compose logs --tail=20 backend
 
-# Run database migrations
-echo "🗄️  Running database migrations..."
-docker compose exec -T backend alembic upgrade head
-
-# Verify migrations completed successfully
-if [ $? -eq 0 ]; then
-    echo "✅ Database migrations completed successfully"
-else
-    echo "❌ Database migrations failed"
-    echo "📋 Migration logs:"
-    docker compose logs --tail=20 backend
-    exit 1
-fi
+# Skip database migrations - user preference
+echo "⏭️  Skipping database migrations (user preference)"
 
 # Start frontend service
 echo "🌐 Starting React frontend..."

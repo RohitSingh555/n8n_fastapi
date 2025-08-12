@@ -133,7 +133,7 @@ function SocialMediaForm() {
         }, 3000);
         
       } else {
-        throw new Error('Upload failed');
+        throw new Error(`Upload failed: ${response.status}`);
       }
       
     } catch (error) {
@@ -169,15 +169,7 @@ function SocialMediaForm() {
     }));
   };
 
-  const handleCustomEmailToggle = () => {
-    setFormData(prev => ({
-      ...prev,
-      isCustomEmail: !prev.isCustomEmail,
-      contentCreator: '',
-      email: '',
-      dropdownOpen: false
-    }));
-  };
+
 
   // Close dropdown when clicking outside
   useEffect(() => {
@@ -196,6 +188,9 @@ function SocialMediaForm() {
   const [showSuccess, setShowSuccess] = useState(false);
   const [showError, setShowError] = useState(false);
   const [errorMessage, setErrorMessage] = useState('');
+  const [feedbackFormLink, setFeedbackFormLink] = useState('');
+  const [feedbackSubmissionId, setFeedbackSubmissionId] = useState('');
+  const [socialMediaPostId, setSocialMediaPostId] = useState('');
 
   const resetForm = () => {
     setFormData({
@@ -211,6 +206,7 @@ function SocialMediaForm() {
       imageUrl: '',
       imageFile: null
     });
+    setFeedbackFormLink('');
   };
 
   const handleSubmit = async (e) => {
@@ -276,20 +272,25 @@ function SocialMediaForm() {
       
       // Determine post image type and value
       let postImageType = '';
-      let imageValue = '';
+      let uploadImageValue = '';
+      let imageUrlValue = '';
       
       if (formData.postImage === 'url') {
         postImageType = 'Yes, I have an image URL';
-        imageValue = formData.imageUrl || '';
+        uploadImageValue = '';
+        imageUrlValue = formData.imageUrl || '';
       } else if (formData.postImage === 'upload') {
         postImageType = 'Yes, I have an image upload';
-        imageValue = formData.imageFile ? 'File uploaded' : '';
+        uploadImageValue = formData.imageUrl || '';
+        imageUrlValue = '';
       } else if (formData.postImage === 'ai-generated') {
         postImageType = 'Yes, AI generated image';
-        imageValue = '';
+        uploadImageValue = '';
+        imageUrlValue = '';
       } else {
         postImageType = 'No image';
-        imageValue = '';
+        uploadImageValue = '';
+        imageUrlValue = '';
       }
       
       // Prepare the payload in the exact format required
@@ -300,8 +301,8 @@ function SocialMediaForm() {
         "AI Prompted Text Generation": formData.aiPrompt || "",
         "Exclude LLMs": excludedLLMs,
         "Post Image?": postImageType,
-        "Upload an Image": imageValue,
-        "Image URL": formData.postImage === 'url' ? (formData.imageUrl || "") : "",
+        "Upload an Image": uploadImageValue,
+        "Image URL": imageUrlValue,
         "Content Creator": contentCreatorEmail
       }];
       
@@ -315,16 +316,36 @@ function SocialMediaForm() {
       });
       
       if (response.ok) {
+        const result = await response.json();
         setLoading(false);
+        
+        // Extract feedback form link and IDs if available
+        if (result.feedback_form_link) {
+          setFeedbackFormLink(result.feedback_form_link);
+        } else {
+          console.warn('No feedback form link received from backend');
+          setFeedbackFormLink('');
+        }
+        
+        // Store the IDs in state
+        if (result.feedback_submission_id) {
+          setFeedbackSubmissionId(result.feedback_submission_id);
+          console.log('Feedback Submission ID:', result.feedback_submission_id);
+        }
+        if (result.social_media_post_id) {
+          setSocialMediaPostId(result.social_media_post_id);
+          console.log('Social Media Post ID:', result.social_media_post_id);
+        }
+        
         setShowSuccess(true);
         resetForm();
         
-        // Hide success message after 5 seconds
+        // Hide success message after 8 seconds (longer to allow copying the link)
         setTimeout(() => {
           setShowSuccess(false);
-        }, 5000);
+        }, 8000);
       } else {
-        throw new Error('Failed to submit to webhook');
+        throw new Error(`Failed to submit to webhook: ${response.status}`);
       }
       
     } catch (error) {
@@ -344,14 +365,48 @@ function SocialMediaForm() {
     <div className="min-h-screen bg-gradient-to-br from-[#E8EBF5] to-[#A8B3D4] py-8 px-4 sm:px-6 lg:px-8">
       {/* Success Message */}
       {showSuccess && (
-        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-sm animate-fade-in">
-          <div className="flex items-center gap-3">
-            <svg className="w-6 h-6" fill="currentColor" viewBox="0 0 20 20">
+        <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md animate-fade-in">
+          <div className="flex items-start gap-3">
+            <svg className="w-6 h-6 mt-0.5 flex-shrink-0" fill="currentColor" viewBox="0 0 20 20">
               <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
             </svg>
-            <div>
-              <div className="font-semibold">Success!</div>
-              <div className="text-sm opacity-90">Your social media post has been submitted successfully.</div>
+            <div className="flex-1 min-w-0">
+              <div className="font-semibold mb-2">Success!</div>
+              <div className="text-sm opacity-90 mb-3">Your social media post has been submitted successfully.</div>
+              
+              {feedbackFormLink && (
+                <div className="bg-green-600 rounded-lg p-3">
+                  <div className="text-xs font-medium mb-2 opacity-90">Feedback Form Link:</div>
+                  <div className="flex items-center gap-2">
+                    <input
+                      type="text"
+                      value={feedbackFormLink}
+                      readOnly
+                      className="flex-1 bg-green-700 text-white text-xs px-2 py-1 rounded border-0 focus:outline-none focus:ring-2 focus:ring-green-300"
+                      onClick={(e) => e.target.select()}
+                    />
+                    <button
+                      type="button"
+                      onClick={(e) => {
+                        navigator.clipboard.writeText(feedbackFormLink);
+                        // Show a brief "Copied!" message
+                        const button = e.target;
+                        const originalText = button.textContent;
+                        button.textContent = 'Copied!';
+                        button.className = 'bg-green-400 text-green-900 text-xs px-2 py-1 rounded hover:bg-green-300 transition-colors';
+                        setTimeout(() => {
+                          button.textContent = originalText;
+                          button.className = 'bg-green-400 text-green-900 text-xs px-2 py-1 rounded hover:bg-green-300 transition-colors';
+                        }, 1000);
+                      }}
+                      className="bg-green-400 text-green-900 text-xs px-2 py-1 rounded hover:bg-green-300 transition-colors"
+                    >
+                      Copy
+                    </button>
+                  </div>
+                  <div className="text-xs opacity-75 mt-1">Use this link to provide feedback on your post</div>
+                </div>
+              )}
             </div>
           </div>
         </div>

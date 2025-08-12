@@ -1,0 +1,4 @@
+pandas>=1.5.0
+pymysql>=1.0.0
+openpyxl>=3.0.0
+sqlalchemy>=2.0.0
