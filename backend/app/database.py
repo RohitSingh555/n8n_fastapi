@@ -28,12 +28,17 @@ try:
         DATABASE_URL,
         pool_pre_ping=True,
         pool_recycle=300,
+        pool_size=10,
+        max_overflow=20,
         echo=False,  # Set to True for SQL debugging
         # Explicitly specify the driver to avoid MySQLdb import issues
         connect_args={
             "charset": "utf8mb4",
             "autocommit": False,
-            "sql_mode": "STRICT_TRANS_TABLES"
+            "sql_mode": "STRICT_TRANS_TABLES",
+            "connect_timeout": 60,
+            "read_timeout": 60,
+            "write_timeout": 60
         },
         # Force PyMySQL usage and avoid MySQLdb
         poolclass=None,
@@ -54,5 +59,40 @@ def get_db():
     db = SessionLocal()
     try:
         yield db
+    except Exception as e:
+        logger.error(f"Database session error: {str(e)}")
+        db.rollback()
+        raise
     finally:
-        db.close() 
+        db.close()
+
+def recreate_engine():
+    """Recreate the database engine if needed"""
+    global engine, SessionLocal
+    try:
+        logger.info("Recreating database engine...")
+        engine.dispose()
+        engine = create_engine(
+            DATABASE_URL,
+            pool_pre_ping=True,
+            pool_recycle=300,
+            pool_size=10,
+            max_overflow=20,
+            echo=False,
+            connect_args={
+                "charset": "utf8mb4",
+                "autocommit": False,
+                "sql_mode": "STRICT_TRANS_TABLES",
+                "connect_timeout": 60,
+                "read_timeout": 60,
+                "write_timeout": 60
+            },
+            poolclass=None,
+            isolation_level="READ_COMMITTED"
+        )
+        SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
+        logger.info("Database engine recreated successfully")
+        return True
+    except Exception as e:
+        logger.error(f"Failed to recreate database engine: {e}")
+        return False 

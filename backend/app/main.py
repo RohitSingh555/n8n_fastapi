@@ -1,5 +1,6 @@
-from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body
+from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body, BackgroundTasks, Request
 from fastapi.middleware.cors import CORSMiddleware
+from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
 from typing import List, Optional
@@ -9,14 +10,75 @@ import traceback
 from datetime import datetime
 import httpx
 import os
+import asyncio
+import json
 
 from . import models, schemas
-from .database import engine, get_db, DATABASE_URL
+from .database import engine, get_db, DATABASE_URL, recreate_engine
 from .database_utils import wait_for_database, ensure_database_exists
+from sqlalchemy import text
+import re
 
 # Configure logging
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
+
+
+
+def log_escape_characters(data: dict, operation: str):
+    """Log information about escape characters in the data for debugging"""
+    escape_patterns = {
+        'newlines': r'\\n',
+        'tabs': r'\\t',
+        'carriage_returns': r'\\r',
+        'backspaces': r'\\b',
+        'form_feeds': r'\\f',
+        'quotes': r'\\"',
+        'backslashes': r'\\\\',
+        'unicode': r'\\u[0-9a-fA-F]{4}'
+    }
+    
+    for field_name, field_value in data.items():
+        if isinstance(field_value, str) and field_value:
+            found_escapes = []
+            for escape_name, pattern in escape_patterns.items():
+                if re.search(pattern, field_value):
+                    count = len(re.findall(pattern, field_value))
+                    found_escapes.append(f"{escape_name}: {count}")
+            
+            if found_escapes:
+                logger.info(f"{operation} - Field '{field_name}' contains escape characters: {', '.join(found_escapes)}")
+                logger.debug(f"{operation} - Field '{field_name}' value: {repr(field_value)}")
+
+def validate_and_log_json_content(content: str, field_name: str) -> str:
+    """Validate and log JSON content, handling escape characters gracefully"""
+    if not content:
+        return content
+    
+    # Clean the content by replacing problematic characters
+    cleaned_content = content
+    if "'" in content:
+        # Replace unescaped apostrophes with escaped ones for JSON compatibility
+        cleaned_content = content.replace("'", "\\'")
+        logger.info(f"Cleaned {field_name}: replaced unescaped apostrophes with escaped ones")
+    
+    # Count escape sequences for logging
+    escape_counts = {
+        'newlines': cleaned_content.count('\\n'),
+        'tabs': cleaned_content.count('\\t'),
+        'carriage_returns': cleaned_content.count('\\r'),
+        'backspaces': cleaned_content.count('\\b'),
+        'form_feeds': cleaned_content.count('\\f'),
+        'quotes': cleaned_content.count('\\"'),
+        'backslashes': cleaned_content.count('\\\\'),
+        'unicode': len(re.findall(r'\\u[0-9a-fA-F]{4}', cleaned_content))
+    }
+    
+    total_escapes = sum(escape_counts.values())
+    if total_escapes > 0:
+        logger.info(f"Processing {field_name} with {total_escapes} escape sequences: {escape_counts}")
+    
+    return cleaned_content
 
 # Wait for database to be ready and create tables
 def initialize_database():
@@ -28,22 +90,98 @@ def initialize_database():
         raise RuntimeError("Database connection failed")
     
     # Ensure database exists
-    if not ensure_database_exists(DATABASE_URL):
+    if not ensure_database_exists(DATABASE_URL, max_retries=5, retry_interval=5):
         logger.error("Failed to ensure database exists. Exiting...")
         raise RuntimeError("Database initialization failed")
     
-    # Create database tables
-    try:
-        models.Base.metadata.create_all(bind=engine)
-        logger.info("Database tables created successfully")
-    except Exception as e:
-        logger.error(f"Failed to create database tables: {str(e)}")
-        raise RuntimeError(f"Table creation failed: {str(e)}")
+    # Create database tables with retry logic
+    max_table_retries = 3
+    for attempt in range(max_table_retries):
+        try:
+            models.Base.metadata.create_all(bind=engine)
+            logger.info("Database tables created successfully")
+            return
+        except Exception as e:
+            logger.warning(f"Failed to create database tables (attempt {attempt + 1}/{max_table_retries}): {str(e)}")
+            if attempt < max_table_retries - 1:
+                import time
+                time.sleep(5)
+                logger.info("Retrying table creation...")
+            else:
+                logger.error(f"Failed to create database tables after {max_table_retries} attempts")
+                raise RuntimeError(f"Table creation failed: {str(e)}")
 
-# Initialize database
-initialize_database()
+# Initialize database with error recovery
+try:
+    initialize_database()
+except RuntimeError as e:
+    if "Table creation failed" in str(e):
+        logger.warning("Table creation failed, attempting to recreate database...")
+        # Wait a bit more for MySQL to be fully ready
+        import time
+        time.sleep(10)
+        try:
+            initialize_database()
+            logger.info("Database initialization successful on retry")
+        except Exception as retry_e:
+            logger.error(f"Database initialization failed on retry: {str(retry_e)}")
+            raise
+    else:
+        raise
 
 app = FastAPI(title="n8n Execution Feedback API", version="1.0.0")
+
+# Background task to check database health
+async def check_database_health():
+    """Periodically check database health and recreate if needed"""
+    while True:
+        try:
+            await asyncio.sleep(300)  # Check every 5 minutes
+            logger.debug("Performing periodic database health check...")
+            
+            # Test database connection
+            try:
+                with engine.connect() as conn:
+                    conn.execute(text("SELECT 1"))
+                logger.debug("Database health check passed")
+            except Exception as e:
+                logger.warning(f"Database health check failed: {str(e)}")
+                logger.info("Attempting to recreate database connection...")
+                try:
+                    if recreate_engine():
+                        logger.info("Database engine recreated successfully")
+                    else:
+                        logger.warning("Failed to recreate engine, attempting full reinitialization...")
+                        initialize_database()
+                        logger.info("Database reinitialized successfully")
+                except Exception as recreate_e:
+                    logger.error(f"Failed to recreate database: {str(recreate_e)}")
+                    
+        except Exception as e:
+            logger.error(f"Error in database health check task: {str(e)}")
+            await asyncio.sleep(60)  # Wait 1 minute before retrying
+
+# Start the background task
+@app.on_event("startup")
+async def startup_event():
+    """Start background tasks on startup"""
+    # Ensure database is ready on startup
+    try:
+        logger.info("Performing startup database check...")
+        with engine.connect() as conn:
+            conn.execute(text("SELECT 1"))
+        logger.info("Startup database check passed")
+    except Exception as e:
+        logger.warning(f"Startup database check failed: {str(e)}")
+        logger.info("Attempting to reinitialize database on startup...")
+        try:
+            initialize_database()
+            logger.info("Database reinitialized successfully on startup")
+        except Exception as init_e:
+            logger.error(f"Failed to reinitialize database on startup: {str(init_e)}")
+    
+    # Start background health check task
+    asyncio.create_task(check_database_health())
 
 # Get frontend URL from environment variable or use default
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
@@ -61,6 +199,49 @@ app.add_middleware(
     allow_headers=["*"],
 )
 
+# Custom middleware to handle JSON parsing errors
+@app.middleware("http")
+async def json_error_handler(request: Request, call_next):
+    """Middleware to catch JSON parsing errors and provide better error messages"""
+    try:
+        response = await call_next(request)
+        return response
+    except json.JSONDecodeError as e:
+        logger.error(f"JSON decode error in request: {str(e)}")
+        return JSONResponse(
+            status_code=400,
+            content={
+                "detail": [
+                    {
+                        "type": "json_invalid",
+                        "loc": ["body"],
+                        "msg": f"Invalid JSON format: {str(e)}",
+                        "input": {},
+                        "ctx": {
+                            "error": str(e),
+                            "help": "Please check your JSON syntax, especially quotes and special characters. Make sure all apostrophes and quotes are properly escaped."
+                        }
+                    }
+                ]
+            }
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error in middleware: {str(e)}")
+        return JSONResponse(
+            status_code=500,
+            content={
+                "detail": [
+                    {
+                        "type": "internal_error",
+                        "loc": ["body"],
+                        "msg": "Internal server error",
+                        "input": {},
+                        "ctx": {"error": str(e)}
+                    }
+                ]
+            }
+        )
+
 @app.post("/api/feedback", response_model=schemas.FeedbackSubmissionCreateResponse)
 def create_feedback_submission(
     feedback: schemas.FeedbackSubmissionCreate,
@@ -70,9 +251,18 @@ def create_feedback_submission(
     try:
         logger.info(f"Creating feedback submission for execution_id: {feedback.n8n_execution_id}")
         
+        # Log escape characters in the incoming data
+        feedback_data = feedback.model_dump()
+        log_escape_characters(feedback_data, "CREATE_FEEDBACK")
+        
+        # Validate and log content with escape characters
+        for field_name, field_value in feedback_data.items():
+            if isinstance(field_value, str) and field_value:
+                feedback_data[field_name] = validate_and_log_json_content(field_value, field_name)
+        
         db_feedback = models.FeedbackSubmission(
             submission_id=str(uuid.uuid4()),
-            **feedback.model_dump()
+            **feedback_data
         )
         db.add(db_feedback)
         db.commit()
@@ -225,6 +415,14 @@ def update_feedback_submission(
         # Update only the fields that are provided
         update_data = feedback_update.model_dump(exclude_unset=True)
         if update_data:
+            # Log escape characters in the update data
+            log_escape_characters(update_data, "UPDATE_FEEDBACK")
+            
+            # Validate and log content with escape characters
+            for field_name, field_value in update_data.items():
+                if isinstance(field_value, str) and field_value:
+                    update_data[field_name] = validate_and_log_json_content(field_value, field_name)
+            
             update_data['updated_at'] = datetime.utcnow()
             
             for field, value in update_data.items():
@@ -234,10 +432,150 @@ def update_feedback_submission(
             db.refresh(db_feedback)
             
             logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
-            return db_feedback
+            return {
+                "status_code": 200,
+                "message": "Feedback submission updated successfully",
+                "submission_id": submission_id
+            }
         else:
             logger.info(f"No fields to update for submission ID: {submission_id}")
-            return db_feedback
+            return {
+                "status_code": 200,
+                "message": "No fields to update",
+                "submission_id": submission_id
+            }
+            
+    except HTTPException:
+        raise
+    except IntegrityError as e:
+        logger.error(f"Database integrity error updating feedback submission: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=400, 
+            detail=f"Database integrity error: {str(e)}"
+        )
+    except SQLAlchemyError as e:
+        logger.error(f"Database error updating feedback submission: {str(e)}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Database error: {str(e)}"
+        )
+    except Exception as e:
+        logger.error(f"Unexpected error updating feedback submission: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        db.rollback()
+        raise HTTPException(
+            status_code=500, 
+            detail=f"Internal server error: {str(e)}"
+        )
+
+# Alternative PUT endpoint that handles raw JSON for better error handling
+@app.put("/api/feedback-raw/{submission_id}")
+async def update_feedback_submission_raw(
+    submission_id: str,
+    request: Request,
+    db: Session = Depends(get_db)
+):
+    """Update an existing feedback submission with raw JSON handling"""
+    try:
+        logger.info(f"Updating feedback submission with ID: {submission_id} using raw JSON")
+        
+        # Get existing feedback submission
+        db_feedback = db.query(models.FeedbackSubmission).filter(
+            models.FeedbackSubmission.submission_id == submission_id
+        ).first()
+        
+        if db_feedback is None:
+            logger.warning(f"Feedback submission not found with ID: {submission_id}")
+            raise HTTPException(status_code=404, detail="Feedback submission not found")
+        
+        # Parse raw JSON body
+        try:
+            body = await request.body()
+            raw_data = json.loads(body.decode('utf-8'))
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            # Try to clean the JSON string manually
+            try:
+                body_str = body.decode('utf-8')
+                logger.info(f"Attempting to clean JSON string. Original length: {len(body_str)}")
+                
+                # More aggressive cleaning approach
+                cleaned_str = body_str
+                
+                # Replace problematic apostrophes with escaped ones
+                if "'" in cleaned_str:
+                    cleaned_str = cleaned_str.replace("'", "\\'")
+                    logger.info("Replaced unescaped apostrophes")
+                
+                # Handle newlines and other control characters in string values
+                # Simple approach: replace all newlines and control characters globally
+                cleaned_str = cleaned_str.replace('\n', '\\n')
+                cleaned_str = cleaned_str.replace('\r', '\\r')
+                cleaned_str = cleaned_str.replace('\t', '\\t')
+                
+                # Remove other control characters
+                cleaned_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', cleaned_str)
+                
+                logger.info("Cleaned control characters from JSON string")
+                
+                # Try to parse the cleaned JSON
+                raw_data = json.loads(cleaned_str)
+                logger.info("Successfully cleaned and parsed JSON after initial failure")
+                
+            except Exception as clean_error:
+                logger.error(f"Failed to clean JSON: {str(clean_error)}")
+                # Provide more detailed error information
+                body_str = body.decode('utf-8')
+                error_pos = e.pos
+                context_start = max(0, error_pos - 100)
+                context_end = min(len(body_str), error_pos + 100)
+                context = body_str[context_start:context_end]
+                
+                raise HTTPException(
+                    status_code=400,
+                    detail={
+                        "type": "json_invalid",
+                        "msg": f"Invalid JSON format: {str(e)}",
+                        "error_position": error_pos,
+                        "context": context,
+                        "help": "Please check your JSON syntax, especially quotes and special characters. Make sure all apostrophes and quotes are properly escaped. The error occurred around the highlighted context."
+                    }
+                )
+        
+        # Update only the fields that are provided
+        if raw_data:
+            # Log escape characters in the update data
+            log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
+            
+            # Validate and log content with escape characters
+            for field_name, field_value in raw_data.items():
+                if isinstance(field_value, str) and field_value:
+                    raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
+            
+            raw_data['updated_at'] = datetime.utcnow()
+            
+            for field, value in raw_data.items():
+                if hasattr(db_feedback, field):
+                    setattr(db_feedback, field, value)
+            
+            db.commit()
+            db.refresh(db_feedback)
+            
+            logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
+            return {
+                "status_code": 200,
+                "message": "Feedback submission updated successfully",
+                "submission_id": submission_id
+            }
+        else:
+            logger.info(f"No fields to update for submission ID: {submission_id}")
+            return {
+                "status_code": 200,
+                "message": "No fields to update",
+                "submission_id": submission_id
+            }
             
     except HTTPException:
         raise
@@ -278,11 +616,236 @@ def read_root():
 def health_check():
     """Health check endpoint"""
     try:
-        logger.info("Health check endpoint accessed")
+        # Only log health checks at DEBUG level to reduce noise
+        logger.debug("Health check endpoint accessed")
         return {"status": "healthy", "message": "API is running"}
     except Exception as e:
         logger.error(f"Error in health check endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail="Health check failed")
+
+@app.post("/api/test-escape-characters")
+def test_escape_characters_endpoint(data: dict):
+    """Test endpoint to verify escape character handling"""
+    try:
+        logger.info("Testing escape character handling endpoint")
+        
+        # Log all escape characters found in the request
+        log_escape_characters(data, "TEST_ESCAPE_CHARACTERS")
+        
+        # Process and validate each field
+        processed_data = {}
+        for field_name, field_value in data.items():
+            if isinstance(field_value, str) and field_value:
+                processed_data[field_name] = validate_and_log_json_content(field_value, field_name)
+            else:
+                processed_data[field_name] = field_value
+        
+        # Return both original and processed data for comparison
+        return {
+            "message": "Escape character test completed",
+            "original_data": data,
+            "processed_data": processed_data,
+            "escape_character_summary": {
+                "total_fields": len(data),
+                "string_fields": len([v for v in data.values() if isinstance(v, str)]),
+                "fields_with_escapes": len([v for v in processed_data.values() if isinstance(v, str) and any(esc in v for esc in ['\\n', '\\t', '\\r', '\\b', '\\f', '\\"', '\\\\'])]
+            )
+        }}
+        
+    except Exception as e:
+        logger.error(f"Error in escape character test endpoint: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Test endpoint error: {str(e)}")
+
+@app.post("/api/test-json-parsing")
+async def test_json_parsing_endpoint(request: Request):
+    """Test endpoint to debug JSON parsing issues"""
+    try:
+        logger.info("Testing JSON parsing endpoint")
+        
+        # Get raw body
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        # Try to parse JSON
+        try:
+            parsed_data = json.loads(body_str)
+            return {
+                "message": "JSON parsed successfully",
+                "body_length": len(body_str),
+                "parsed_data": parsed_data,
+                "status": "success"
+            }
+        except json.JSONDecodeError as e:
+            logger.error(f"JSON decode error: {str(e)}")
+            
+            # Try to identify the problematic character
+            error_pos = e.pos
+            context_start = max(0, error_pos - 50)
+            context_end = min(len(body_str), error_pos + 50)
+            context = body_str[context_start:context_end]
+            
+            # Try to clean common issues
+            cleaned_str = body_str
+            if "'" in body_str:
+                cleaned_str = body_str.replace("'", "\\'")
+                logger.info("Attempted to clean apostrophes")
+            
+            try:
+                cleaned_data = json.loads(cleaned_str)
+                return {
+                    "message": "JSON parsed after cleaning",
+                    "original_error": str(e),
+                    "error_position": error_pos,
+                    "context": context,
+                    "cleaned_data": cleaned_data,
+                    "status": "cleaned"
+                }
+            except:
+                return {
+                    "message": "JSON parsing failed even after cleaning",
+                    "error": str(e),
+                    "error_position": error_pos,
+                    "context": context,
+                    "body_preview": body_str[:200] + "..." if len(body_str) > 200 else body_str,
+                    "status": "failed"
+                }
+        
+    except Exception as e:
+        logger.error(f"Error in JSON parsing test endpoint: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Test endpoint error: {str(e)}")
+
+@app.post("/api/fix-json")
+async def fix_json_endpoint(request: Request):
+    """Endpoint to automatically fix common JSON issues"""
+    try:
+        logger.info("Fixing JSON endpoint accessed")
+        
+        # Get raw body
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        # Try to parse JSON first
+        try:
+            parsed_data = json.loads(body_str)
+            return {
+                "message": "JSON was already valid",
+                "fixed_json": body_str,
+                "status": "already_valid"
+            }
+        except json.JSONDecodeError as e:
+            logger.info(f"Attempting to fix JSON: {str(e)}")
+            
+            # Fix common issues
+            fixed_str = body_str
+            
+            # Replace unescaped apostrophes in string values
+            # This regex finds apostrophes that are inside quotes but not escaped
+            import re
+            
+            # Pattern to match string values and fix apostrophes
+            def fix_apostrophes(match):
+                content = match.group(1)
+                # Replace unescaped apostrophes with escaped ones
+                fixed_content = content.replace("'", "\\'")
+                return f'"{fixed_content}"'
+            
+            # Find all string values and fix them
+            string_pattern = r'"([^"]*)"'
+            fixed_str = re.sub(string_pattern, fix_apostrophes, fixed_str)
+            
+            # Try to parse the fixed JSON
+            try:
+                fixed_data = json.loads(fixed_str)
+                return {
+                    "message": "JSON fixed successfully",
+                    "original_json": body_str,
+                    "fixed_json": fixed_str,
+                    "parsed_data": fixed_data,
+                    "status": "fixed"
+                }
+            except json.JSONDecodeError as fix_error:
+                return {
+                    "message": "Failed to fix JSON",
+                    "original_error": str(e),
+                    "fix_error": str(fix_error),
+                    "original_json": body_str,
+                    "attempted_fix": fixed_str,
+                    "status": "failed"
+                }
+        
+    except Exception as e:
+        logger.error(f"Error in fix JSON endpoint: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Fix JSON endpoint error: {str(e)}")
+
+@app.post("/api/debug-json")
+async def debug_json_endpoint(request: Request):
+    """Debug endpoint to show exactly what's wrong with JSON"""
+    try:
+        logger.info("Debug JSON endpoint accessed")
+        
+        # Get raw body
+        body = await request.body()
+        body_str = body.decode('utf-8')
+        
+        # Show the raw body and identify issues
+        issues = []
+        
+        # Check for newlines
+        newline_count = body_str.count('\n')
+        if newline_count > 0:
+            issues.append(f"Found {newline_count} newline characters")
+        
+        # Check for unescaped apostrophes
+        apostrophe_count = body_str.count("'")
+        if apostrophe_count > 0:
+            issues.append(f"Found {apostrophe_count} apostrophe characters")
+        
+        # Check for control characters
+        control_chars = []
+        for i, char in enumerate(body_str):
+            if ord(char) < 32 and char not in '\n\r\t':
+                control_chars.append(f"Position {i}: {repr(char)} (char code {ord(char)})")
+        
+        if control_chars:
+            issues.append(f"Found control characters: {control_chars}")
+        
+        # Try to show where the problem is
+        try:
+            json.loads(body_str)
+            return {
+                "message": "JSON is valid",
+                "body_length": len(body_str),
+                "issues": issues,
+                "status": "valid"
+            }
+        except json.JSONDecodeError as e:
+            # Show the problematic area
+            error_pos = e.pos
+            context_start = max(0, error_pos - 100)
+            context_end = min(len(body_str), error_pos + 100)
+            context = body_str[context_start:context_end]
+            
+            # Show the character at the error position
+            problem_char = body_str[error_pos] if error_pos < len(body_str) else "EOF"
+            
+            return {
+                "message": "JSON is invalid",
+                "error": str(e),
+                "error_position": error_pos,
+                "problem_character": repr(problem_char),
+                "context": context,
+                "body_length": len(body_str),
+                "issues": issues,
+                "status": "invalid"
+            }
+        
+    except Exception as e:
+        logger.error(f"Error in debug JSON endpoint: {str(e)}")
+        logger.error(f"Traceback: {traceback.format_exc()}")
+        raise HTTPException(status_code=500, detail=f"Debug JSON endpoint error: {str(e)}")
 
 
 # Social Media Post Endpoints

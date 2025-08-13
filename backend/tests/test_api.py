@@ -243,4 +243,167 @@ class TestFeedbackAPI:
         assert response.status_code == 200
         data = response.json()
         assert data["message"] == "n8n Execution Feedback API"
-        assert data["version"] == "1.0.0" 
+        assert data["version"] == "1.0.0"
+    
+    def test_escape_characters_in_feedback(self):
+        """Test that the API properly handles escape characters in feedback content"""
+        feedback_data = {
+            "n8n_execution_id": "test-escape-123",
+            "email": "test@example.com",
+            "linkedin_feedback": "This is a test feedback\nwith a newline\nand another newline",
+            "linkedin_chosen_llm": "Grok",
+            "x_feedback": "X feedback with\ttab\tcharacters",
+            "x_chosen_llm": "Gemini",
+            "image_feedback": "Image feedback with\\nliteral backslash+n",
+            "image_chosen_llm": "Stable"
+        }
+        
+        response = client.post("/api/feedback", json=feedback_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        submission_id = data["submission_id"]
+        
+        # Verify the escape characters were stored correctly
+        assert "\n" in feedback_data["linkedin_feedback"]
+        assert "\t" in feedback_data["x_feedback"]
+        assert "\\n" in feedback_data["image_feedback"]
+        
+        # Retrieve and verify the stored data
+        get_response = client.get(f"/api/feedback/{submission_id}")
+        assert get_response.status_code == 200
+        
+        retrieved_data = get_response.json()
+        assert retrieved_data["linkedin_feedback"] == feedback_data["linkedin_feedback"]
+        assert retrieved_data["x_feedback"] == feedback_data["x_feedback"]
+        assert retrieved_data["image_feedback"] == feedback_data["image_feedback"]
+        
+        # Verify newlines and tabs are preserved
+        assert "\n" in retrieved_data["linkedin_feedback"]
+        assert "\t" in retrieved_data["x_feedback"]
+    
+    def test_update_feedback_with_escape_characters(self):
+        """Test updating feedback with escape characters"""
+        # First create a feedback submission
+        feedback_data = {
+            "n8n_execution_id": "test-update-escape-123",
+            "email": "test@example.com",
+            "linkedin_feedback": "Initial feedback",
+            "linkedin_chosen_llm": "Grok"
+        }
+        
+        create_response = client.post("/api/feedback", json=feedback_data)
+        assert create_response.status_code == 200
+        submission_id = create_response.json()["submission_id"]
+        
+        # Update with escape characters
+        update_data = {
+            "linkedin_feedback": "Updated feedback\nwith\nmultiple\nnewlines",
+            "x_feedback": "Updated X feedback\twith\ttabs\tand\nnewlines",
+            "image_feedback": "Updated image feedback with \\\"quotes\\\" and \\\\backslashes\\\\"
+        }
+        
+        update_response = client.put(f"/api/feedback/{submission_id}", json=update_data)
+        assert update_response.status_code == 200
+        
+        updated_data = update_response.json()
+        assert updated_data["linkedin_feedback"] == update_data["linkedin_feedback"]
+        assert updated_data["x_feedback"] == update_data["x_feedback"]
+        assert updated_data["image_feedback"] == update_data["image_feedback"]
+        
+        # Verify the escape characters are preserved
+        assert "\n" in updated_data["linkedin_feedback"]
+        assert "\t" in updated_data["image_feedback"]
+        assert "\"" in updated_data["image_feedback"]
+        assert "\\" in updated_data["image_feedback"]
+    
+    def test_user_specific_json_data(self):
+        """Test the API with the user's specific JSON data containing multiline content"""
+        user_data = {
+            "n8n_execution_id": "test-user-ultrasound-123",
+            "email": "Matthew@AutomationConsultingServices.org",
+            "linkedin_grok_content": "Ready to see the future of prenatal care?\n\nAt Ultrasound AI, we're thrilled to showcase how our cutting-edge artificial intelligence is transforming the way clinicians support expectant mothers. By harnessing the power of AI, we're enabling earlier predictions and more personalized care—because every pregnancy journey deserves the best start possible.\n\nOur mission is simple yet profound: to empower healthcare providers with innovative tools that improve outcomes for women and families worldwide. With a focus on accessibility and inclusivity, we're breaking down barriers to ensure that life-changing technology reaches everyone, no matter their location or circumstances.\n\nJoin us in revolutionizing maternal health. How do you envision AI shaping the future of healthcare? Share your thoughts below—we'd love to hear from you! #MaternalHealth #AIInnovation #PrenatalCare #UltrasoundAI #HealthcareTech",
+            "linkedin_o3_content": "What if every expectant parent, everywhere, had the same chance at a healthy start?\n\nAt Ultrasound AI, that question drives our work each day. By merging decades of medical expertise with state-of-the-art artificial intelligence, we help clinicians spot risks sooner and tailor care to each pregnancy—no matter the zip code or ability to pay. Our commitment to equitable, impactful, and inclusive innovation means healthier outcomes for women and families worldwide.\n\nImagine a future where personalized prenatal insights are just a scan away. We're building it—together. How do you see AI elevating maternal health in your community? Share below! #PrenatalCare #AIInnovation #WomensHealth #UltrasoundAI",
+            "linkedin_gemini_content": "Imagine a world where every pregnancy is supported by the power of AI.\n\nAt Ultrasound AI, we're turning that vision into reality. Our technology empowers healthcare providers with deeper insights, helping them deliver more personalized and proactive care to expectant mothers. We believe in the power of innovation to create better outcomes.\n\nOur work is driven by a simple, powerful goal: to advance women's health with accessible and impactful solutions. By designing our technology with diverse data, we ensure that every family, everywhere, can benefit from a healthier start.\n\nWhat's one way you've seen technology improve patient care? Let's celebrate the progress. #UltrasoundAI #AIinHealthcare #PrenatalCare #WomensHealth #HealthTech #Innovation",
+            "linkedin_feedback": "",
+            "linkedin_chosen_llm": "",
+            "linkedin_custom_content": "",
+            "x_grok_content": "Write me a X/Twitter post that follows the user's message (<UserMessage>) below. If there is any feedback in the <feedback> section you are to pay very close attention to it. If there is any <feedback> available related to previous posts about the <UserMessage> which are stored in your memory make sure to take those into careful consideration before generating a new response.",
+            "x_o3_content": "Write me a X/Twitter post that follows the user's message (<UserMessage>) below. If there is any feedback in the <feedback> section you are to pay very close attention to it. If there is any <feedback> available related to previous posts about the <UserMessage> which are stored in your memory make sure to take those into careful consideration before generating a new response.",
+            "x_gemini_content": "Write me a X/Twitter post that follows the user's message (<UserMessage>) below. If there is any feedback in the <feedback> section you are to pay very close attention to it. If there is any <feedback> available related to previous posts about the <UserMessage> which are stored in your memory make sure to take those into careful consideration before generating a new response.",
+            "x_feedback": "string",
+            "x_chosen_llm": "string",
+            "x_custom_content": "string",
+            "stable_diffusion_image_url": "string",
+            "pixabay_image_url": "string",
+            "gpt1_image_url": "string",
+            "image_feedback": "string",
+            "image_chosen_llm": "string"
+        }
+        
+        # Count newlines in content fields
+        content_fields = ['linkedin_grok_content', 'linkedin_o3_content', 'linkedin_gemini_content']
+        total_newlines = sum(user_data[field].count('\n') for field in content_fields if user_data[field])
+        
+        response = client.post("/api/feedback", json=user_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        submission_id = data["submission_id"]
+        
+        # Verify the submission was created successfully
+        assert "submission_id" in data
+        assert data["email"] == "Matthew@AutomationConsultingServices.org"
+        
+        # Retrieve and verify the stored data
+        get_response = client.get(f"/api/feedback/{submission_id}")
+        assert get_response.status_code == 200
+        
+        retrieved_data = get_response.json()
+        
+        # Verify newlines are preserved in content fields
+        for field in content_fields:
+            if retrieved_data[field]:
+                newline_count = retrieved_data[field].count('\\n')
+                assert newline_count > 0, f"Field {field} should contain newlines"
+                assert retrieved_data[field] == user_data[field], f"Field {field} content not preserved correctly"
+        
+        # Verify the total newline count matches
+        retrieved_newlines = sum(retrieved_data[field].count('\\n') for field in content_fields if retrieved_data[field])
+        assert retrieved_newlines == total_newlines, "Total newline count should be preserved"
+    
+    def test_escape_character_test_endpoint(self):
+        """Test the escape character test endpoint"""
+        test_data = {
+            "simple_text": "This is simple text",
+            "text_with_newlines": "Line 1\\nLine 2\\nLine 3",
+            "text_with_tabs": "Column1\\tColumn2\\tColumn3",
+            "text_with_quotes": "Text with \\\"quotes\\\" and 'apostrophes'",
+            "text_with_backslashes": "Path: C:\\\\Users\\\\Username\\\\Documents",
+            "text_with_unicode": "Hello\\u0041\\u0042\\u0043",  # ABC
+            "text_with_mixed": "Mixed\\n\\t\\\"content\\nwith\\tescapes",
+            "empty_string": "",
+            "null_value": None
+        }
+        
+        response = client.post("/api/test-escape-characters", json=test_data)
+        assert response.status_code == 200
+        
+        result = response.json()
+        assert "message" in result
+        assert "original_data" in result
+        assert "processed_data" in result
+        assert "escape_character_summary" in result
+        
+        # Verify the summary
+        summary = result["escape_character_summary"]
+        assert summary["total_fields"] == 9
+        assert summary["string_fields"] == 8  # null_value is not a string
+        assert summary["fields_with_escapes"] > 0
+        
+        # Verify processed data contains escape characters
+        processed = result["processed_data"]
+        assert processed["text_with_newlines"] == test_data["text_with_newlines"]
+        assert processed["text_with_tabs"] == test_data["text_with_tabs"]
+        assert processed["text_with_quotes"] == test_data["text_with_quotes"]
+        assert processed["text_with_backslashes"] == test_data["text_with_backslashes"] 
