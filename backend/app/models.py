@@ -10,10 +10,10 @@ class FeedbackSubmission(Base):
     submission_id = Column(String(255), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     
     # n8n Execution ID
-    n8n_execution_id = Column(String(255), nullable=False)
+    n8n_execution_id = Column(String(255), nullable=True)
     
     # User Email
-    email = Column(String(255), nullable=False)
+    email = Column(String(255), nullable=True)
     
     # LinkedIn Content
     linkedin_grok_content = Column(Text)
@@ -50,11 +50,11 @@ class SocialMediaPost(Base):
     post_id = Column(String(255), unique=True, index=True, default=lambda: str(uuid.uuid4()))
     
     # Content Creator Information
-    content_creator = Column(String(255), nullable=False)  # creator ID
-    email = Column(String(255), nullable=False)
+    content_creator = Column(String(255), nullable=True)  # creator ID
+    email = Column(String(255), nullable=True)
     
     # Social Platform
-    social_platform = Column(String(100), nullable=False)  # linkedin, twitter
+    social_platform = Column(String(100), nullable=True)  # linkedin, twitter
     
     # Content
     custom_content = Column(Text)

@@ -30,13 +30,7 @@ const TabContent = ({
            formData.gpt1_image_url?.trim();
   };
 
-  // If no content and not in edit mode, don't render the tab
-  // In edit mode, always render so users can see and edit all fields
-  if (!isEditMode) {
-    if (activeTab === 'linkedin' && !hasLinkedInContent()) return null;
-    if (activeTab === 'twitter' && !hasTwitterContent()) return null;
-    if (activeTab === 'images' && !hasImageContent()) return null;
-  }
+  // Always render tabs so users can access all form fields
 
   const linkedinOptions = [
     { value: 'Grok', label: 'Grok', description: 'AI-powered content generation' },
@@ -106,26 +100,38 @@ const TabContent = ({
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            {formData.linkedin_grok_content?.trim() && (
+            {formData.linkedin_grok_content?.trim() ? (
               <ContentPreview 
                 title="Grok Content" 
                 content={formData.linkedin_grok_content}
                 icon={FiLinkedin}
               />
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="text-slate-400 text-sm">No Grok content generated yet</div>
+              </div>
             )}
-            {formData.linkedin_o3_content?.trim() && (
+            {formData.linkedin_o3_content?.trim() ? (
               <ContentPreview 
                 title="o3 Content" 
                 content={formData.linkedin_o3_content}
                 icon={FiLinkedin}
               />
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="text-slate-400 text-sm">No o3 content generated yet</div>
+              </div>
             )}
-            {formData.linkedin_gemini_content?.trim() && (
+            {formData.linkedin_gemini_content?.trim() ? (
               <ContentPreview 
                 title="Gemini Content" 
                 content={formData.linkedin_gemini_content}
                 icon={FiLinkedin}
               />
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="text-slate-400 text-sm">No Gemini content generated yet</div>
+              </div>
             )}
           </div>
         </div>
@@ -179,7 +185,7 @@ const TabContent = ({
               value={formData.linkedin_feedback}
               onChange={handleInputChange}
               disabled={isFeedbackDisabled}
-              className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-24 sm:min-h-32 resize-none text-sm sm:text-base ${
+              className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-48 sm:min-h-64 resize-none text-sm sm:text-base ${
                 isFeedbackDisabled
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
@@ -214,7 +220,7 @@ const TabContent = ({
             value={formData.linkedin_custom_content}
             onChange={handleInputChange}
             disabled={isCustomContentDisabled}
-            className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-24 sm:min-h-32 resize-none text-sm sm:text-base ${
+            className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-48 sm:min-h-64 resize-none text-sm sm:text-base ${
               isCustomContentDisabled
                 ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                 : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
@@ -276,26 +282,38 @@ const TabContent = ({
           </div>
           
           <div className="grid grid-cols-1 md:grid-cols-2 xl:grid-cols-3 gap-4 sm:gap-6">
-            {formData.x_grok_content?.trim() && (
+            {formData.x_grok_content?.trim() ? (
               <ContentPreview 
                 title="Grok Content" 
                 content={formData.x_grok_content}
                 icon={FiTwitter}
               />
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="text-slate-400 text-sm">No Grok content generated yet</div>
+              </div>
             )}
-            {formData.x_o3_content?.trim() && (
+            {formData.x_o3_content?.trim() ? (
               <ContentPreview 
                 title="o3 Content" 
                 content={formData.x_o3_content}
                 icon={FiTwitter}
               />
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="text-slate-400 text-sm">No o3 content generated yet</div>
+              </div>
             )}
-            {formData.x_gemini_content?.trim() && (
+            {formData.x_gemini_content?.trim() ? (
               <ContentPreview 
                 title="Gemini Content" 
                 content={formData.x_gemini_content}
                 icon={FiTwitter}
               />
+            ) : (
+              <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+                <div className="text-slate-400 text-sm">No Gemini content generated yet</div>
+              </div>
             )}
           </div>
         </div>
@@ -349,7 +367,7 @@ const TabContent = ({
               value={formData.x_feedback}
               onChange={handleInputChange}
               disabled={isFeedbackDisabled}
-              className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-32 resize-none ${
+              className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
                 isFeedbackDisabled
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
@@ -384,7 +402,7 @@ const TabContent = ({
             value={formData.x_custom_content}
             onChange={handleInputChange}
             disabled={isCustomContentDisabled}
-            className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-32 resize-none ${
+            className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
               isCustomContentDisabled
                 ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                 : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
@@ -408,26 +426,38 @@ const TabContent = ({
     return (
       <div className="space-y-8">
         <div className="grid grid-cols-1 lg:grid-cols-3 gap-6">
-          {formData.stable_diffusion_image_url?.trim() && (
+          {formData.stable_diffusion_image_url?.trim() ? (
             <ImagePreview 
               title="Stable Diffusion" 
               url={formData.stable_diffusion_image_url}
               icon={FiImage}
             />
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+              <div className="text-slate-400 text-sm">No Stable Diffusion image yet</div>
+            </div>
           )}
-          {formData.pixabay_image_url?.trim() && (
+          {formData.pixabay_image_url?.trim() ? (
             <ImagePreview 
               title="Pixabay" 
               url={formData.pixabay_image_url}
               icon={FiImage}
             />
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+              <div className="text-slate-400 text-sm">No Pixabay image yet</div>
+            </div>
           )}
-          {formData.gpt1_image_url?.trim() && (
+          {formData.gpt1_image_url?.trim() ? (
             <ImagePreview 
               title="GPT1" 
               url={formData.gpt1_image_url}
               icon={FiImage}
             />
+          ) : (
+            <div className="bg-slate-50 border border-slate-200 rounded-2xl p-6 text-center">
+              <div className="text-slate-400 text-sm">No GPT1 image yet</div>
+            </div>
           )}
         </div>
 
@@ -471,7 +501,7 @@ const TabContent = ({
               value={formData.image_feedback}
               onChange={handleInputChange}
               disabled={isFeedbackDisabled}
-              className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-32 resize-none ${
+              className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
                 isFeedbackDisabled
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
                   : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'

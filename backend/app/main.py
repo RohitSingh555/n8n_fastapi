@@ -1,5 +1,4 @@
 from fastapi import FastAPI, Depends, HTTPException, UploadFile, File, Body, BackgroundTasks, Request
-from fastapi.middleware.cors import CORSMiddleware
 from fastapi.responses import JSONResponse
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
@@ -186,18 +185,28 @@ async def startup_event():
 # Get frontend URL from environment variable or use default
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 
-# Configure CORS
-app.add_middleware(
-    CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",  # React app URL
-        "http://104.131.8.230:3000",  # Production frontend URL
-        FRONTEND_URL,  # Environment variable frontend URL
-    ],
-    allow_credentials=True,
-    allow_methods=["*"],
-    allow_headers=["*"],
-)
+
+
+
+
+
+
+
+
+# Simple middleware to add CORS headers to all responses
+@app.middleware("http")
+async def add_cors_headers(request: Request, call_next):
+    """Add CORS headers to all responses"""
+    response = await call_next(request)
+    
+    # Add CORS headers to allow all origins
+    response.headers["Access-Control-Allow-Origin"] = "*"
+    response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
+    response.headers["Access-Control-Allow-Headers"] = "Content-Type, Authorization, X-Requested-With, Accept, Origin"
+    response.headers["Access-Control-Allow-Credentials"] = "true"
+    response.headers["Access-Control-Max-Age"] = "3600"
+    
+    return response
 
 # Custom middleware to handle JSON parsing errors
 @app.middleware("http")
@@ -241,6 +250,23 @@ async def json_error_handler(request: Request, call_next):
                 ]
             }
         )
+
+# Add OPTIONS handlers for CORS preflight
+@app.options("/api/feedback")
+async def options_feedback():
+    return {"message": "OK"}
+
+@app.options("/api/feedback/{submission_id}")
+async def options_feedback_by_id(submission_id: str):
+    return {"message": "OK"}
+
+@app.options("/api/submit-feedback-webhook")
+async def options_webhook():
+    return {"message": "OK"}
+
+@app.options("/api/feedback-raw/{submission_id}")
+async def options_feedback_raw(submission_id: str):
+    return {"message": "OK"}
 
 @app.post("/api/feedback", response_model=schemas.FeedbackSubmissionCreateResponse)
 def create_feedback_submission(
@@ -317,7 +343,15 @@ def get_all_feedback_submissions(
         feedback_submissions = db.query(models.FeedbackSubmission).offset(skip).limit(limit).all()
         
         logger.info(f"Successfully retrieved {len(feedback_submissions)} feedback submissions")
-        return feedback_submissions
+        # Convert SQLAlchemy models to Pydantic models with explicit field handling
+        response_list = []
+        for feedback in feedback_submissions:
+            response_data = {}
+            for field in schemas.FeedbackSubmissionResponse.model_fields:
+                value = getattr(feedback, field, None)
+                response_data[field] = value if value is not None else None
+            response_list.append(schemas.FeedbackSubmissionResponse(**response_data))
+        return response_list
         
     except SQLAlchemyError as e:
         logger.error(f"Database error fetching all feedback submissions: {str(e)}")
@@ -344,7 +378,15 @@ def get_feedback_by_execution_id(execution_id: str, db: Session = Depends(get_db
         ).all()
         
         logger.info(f"Successfully retrieved {len(feedback_submissions)} feedback submissions for execution_id: {execution_id}")
-        return feedback_submissions
+        # Convert SQLAlchemy models to Pydantic models with explicit field handling
+        response_list = []
+        for feedback in feedback_submissions:
+            response_data = {}
+            for field in schemas.FeedbackSubmissionResponse.model_fields:
+                value = getattr(feedback, field, None)
+                response_data[field] = value if value is not None else None
+            response_list.append(schemas.FeedbackSubmissionResponse(**response_data))
+        return response_list
         
     except SQLAlchemyError as e:
         logger.error(f"Database error fetching feedback by execution_id: {str(e)}")
@@ -375,7 +417,16 @@ def get_feedback_by_submission_id(submission_id: str, db: Session = Depends(get_
             raise HTTPException(status_code=404, detail="Feedback submission not found")
         
         logger.info(f"Successfully retrieved feedback submission with ID: {submission_id}")
-        return feedback
+        # Convert SQLAlchemy model to Pydantic model with explicit field handling
+        response_data = {}
+        for field in schemas.FeedbackSubmissionResponse.model_fields:
+            try:
+                value = getattr(feedback, field, None)
+                response_data[field] = value if value is not None else None
+            except AttributeError:
+                # If field doesn't exist on the model, set it to None
+                response_data[field] = None
+        return schemas.FeedbackSubmissionResponse(**response_data)
         
     except HTTPException:
         raise
@@ -402,6 +453,7 @@ def update_feedback_submission(
     """Update an existing feedback submission"""
     try:
         logger.info(f"Updating feedback submission with ID: {submission_id}")
+        logger.info(f"Update data received: {feedback_update.model_dump()}")
         
         # Get existing feedback submission
         db_feedback = db.query(models.FeedbackSubmission).filter(
@@ -412,8 +464,22 @@ def update_feedback_submission(
             logger.warning(f"Feedback submission not found with ID: {submission_id}")
             raise HTTPException(status_code=404, detail="Feedback submission not found")
         
+        logger.info(f"Found existing feedback: {db_feedback.submission_id}")
+        
         # Update only the fields that are provided
         update_data = feedback_update.model_dump(exclude_unset=True)
+        logger.info(f"Fields to update: {list(update_data.keys())}")
+        
+        # Filter out any database-specific fields that shouldn't be updated
+        forbidden_fields = {'id', 'submission_id', 'created_at'}
+        update_data = {k: v for k, v in update_data.items() if k not in forbidden_fields}
+        logger.info(f"Filtered fields to update: {list(update_data.keys())}")
+        
+        # Ensure email is not empty if it's being updated
+        if 'email' in update_data and (not update_data['email'] or update_data['email'].strip() == ''):
+            logger.warning("Email field is empty, removing from update data")
+            del update_data['email']
+        
         if update_data:
             # Log escape characters in the update data
             log_escape_characters(update_data, "UPDATE_FEEDBACK")
@@ -426,24 +492,35 @@ def update_feedback_submission(
             update_data['updated_at'] = datetime.utcnow()
             
             for field, value in update_data.items():
+                logger.info(f"Setting field {field} to {value}")
                 setattr(db_feedback, field, value)
             
             db.commit()
             db.refresh(db_feedback)
             
             logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
-            return {
-                "status_code": 200,
-                "message": "Feedback submission updated successfully",
-                "submission_id": submission_id
-            }
+            # Convert SQLAlchemy model to Pydantic model with explicit field handling
+            response_data = {}
+            for field in schemas.FeedbackSubmissionResponse.model_fields:
+                try:
+                    value = getattr(db_feedback, field, None)
+                    response_data[field] = value if value is not None else None
+                except AttributeError:
+                    # If field doesn't exist on the model, set it to None
+                    response_data[field] = None
+            return schemas.FeedbackSubmissionResponse(**response_data)
         else:
             logger.info(f"No fields to update for submission ID: {submission_id}")
-            return {
-                "status_code": 200,
-                "message": "No fields to update",
-                "submission_id": submission_id
-            }
+            # Convert SQLAlchemy model to Pydantic model with explicit field handling
+            response_data = {}
+            for field in schemas.FeedbackSubmissionResponse.model_fields:
+                try:
+                    value = getattr(db_feedback, field, None)
+                    response_data[field] = value if value is not None else None
+                except AttributeError:
+                    # If field doesn't exist on the model, set it to None
+                    response_data[field] = None
+            return schemas.FeedbackSubmissionResponse(**response_data)
             
     except HTTPException:
         raise
@@ -462,13 +539,21 @@ def update_feedback_submission(
             detail=f"Database error: {str(e)}"
         )
     except Exception as e:
-        logger.error(f"Unexpected error updating feedback submission: {str(e)}")
-        logger.error(f"Traceback: {traceback.format_exc()}")
-        db.rollback()
-        raise HTTPException(
-            status_code=500, 
-            detail=f"Internal server error: {str(e)}"
-        )
+            logger.error(f"Unexpected error updating feedback submission: {str(e)}")
+            logger.error(f"Traceback: {traceback.format_exc()}")
+            db.rollback()
+            
+            # Return more detailed error information
+            error_detail = f"Internal server error: {str(e)}"
+            if "datetime" in str(e).lower():
+                error_detail = "Date/time format error. Please check the data being sent."
+            elif "validation" in str(e).lower():
+                error_detail = "Data validation error. Please check the field values."
+            
+            raise HTTPException(
+                status_code=500, 
+                detail=error_detail
+            )
 
 # Alternative PUT endpoint that handles raw JSON for better error handling
 @app.put("/api/feedback-raw/{submission_id}")
@@ -564,18 +649,12 @@ async def update_feedback_submission_raw(
             db.refresh(db_feedback)
             
             logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
-            return {
-                "status_code": 200,
-                "message": "Feedback submission updated successfully",
-                "submission_id": submission_id
-            }
+            # Return the updated feedback submission object to match the response_model
+            return db_feedback
         else:
             logger.info(f"No fields to update for submission ID: {submission_id}")
-            return {
-                "status_code": 200,
-                "message": "No fields to update",
-                "submission_id": submission_id
-            }
+            # Return the existing feedback submission object to match the response_model
+            return db_feedback
             
     except HTTPException:
         raise
@@ -618,7 +697,23 @@ def health_check():
     try:
         # Only log health checks at DEBUG level to reduce noise
         logger.debug("Health check endpoint accessed")
-        return {"status": "healthy", "message": "API is running"}
+        
+        # Test database connection
+        try:
+            db = next(get_db())
+            db.execute(text("SELECT 1"))
+            db.close()
+            db_status = "connected"
+        except Exception as db_error:
+            logger.error(f"Database connection error: {str(db_error)}")
+            db_status = f"error: {str(db_error)}"
+        
+        return {
+            "status": "healthy", 
+            "message": "API is running",
+            "database": db_status,
+            "timestamp": datetime.utcnow().isoformat()
+        }
     except Exception as e:
         logger.error(f"Error in health check endpoint: {str(e)}")
         raise HTTPException(status_code=500, detail="Health check failed")

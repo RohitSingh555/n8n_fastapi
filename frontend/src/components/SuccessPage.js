@@ -3,6 +3,7 @@ import { FiCheck, FiHome, FiEdit3, FiDownload, FiShare2, FiSend } from 'react-ic
 
 // Import logo
 import logo from '../assets/logo.png';
+import API_BASE_URL from '../config';
 
 const SuccessPage = ({ submissionId, onReset, onContinueEditing }) => {
   const [webhookLoading, setWebhookLoading] = useState(false);
@@ -13,7 +14,7 @@ const SuccessPage = ({ submissionId, onReset, onContinueEditing }) => {
     setWebhookStatus(null);
     
     try {
-      const response = await fetch('/api/submit-feedback-webhook', {
+      const response = await fetch(`${API_BASE_URL}/api/submit-feedback-webhook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',

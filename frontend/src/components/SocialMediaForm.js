@@ -4,6 +4,7 @@ import { FiUser, FiGlobe, FiEdit3, FiImage, FiX, FiSend } from 'react-icons/fi';
 
 // Import logo
 import logo from '../assets/logo.png';
+import API_BASE_URL from '../config';
 
 function SocialMediaForm() {
   const navigate = useNavigate();
@@ -94,7 +95,7 @@ function SocialMediaForm() {
       
       setUploadProgress('Uploading file to server...');
       
-      const response = await fetch('/api/upload-image', {
+      const response = await fetch(`${API_BASE_URL}/api/upload-image`, {
         method: 'POST',
         body: formData
       });
@@ -307,7 +308,7 @@ function SocialMediaForm() {
       }];
       
       // Send to webhook through our backend proxy
-      const response = await fetch('/api/webhook-proxy', {
+      const response = await fetch(`${API_BASE_URL}/api/webhook-proxy`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
@@ -443,7 +444,7 @@ function SocialMediaForm() {
         </div>
       )}
       
-      <div className="max-w-4xl mx-auto">
+      <div className="max-w-7xl mx-auto">
         {/* Header */}
         <header className="text-center mb-8 sm:mb-12">
                       {/* Logo */}
@@ -463,7 +464,7 @@ function SocialMediaForm() {
           <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-[#3E3E3E] mb-3 sm:mb-4 animate-fade-in">
             Social Media Posting Form
           </h1>
-          <p className="text-[#5A67A5] text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
+          <p className="text-[#5A67A5] text-sm sm:text-base lg:text-lg max-w-4xl mx-auto px-4 animate-fade-in-delay">
             Create and schedule your social media posts with AI-powered content generation
           </p>
           <div className="flex justify-center gap-4 mt-6">

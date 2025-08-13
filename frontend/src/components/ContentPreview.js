@@ -79,7 +79,7 @@ const ContentPreview = ({ title, content, icon: Icon, isPrefilled = true }) => {
         }`}>
           <div className="relative">
             {/* Content with fixed height and scroll */}
-            <div className="h-40 sm:h-48 overflow-y-auto">
+            <div className="h-80 sm:h-96 overflow-y-auto">
               <p className="text-slate-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap font-medium">
                 {content}
               </p>

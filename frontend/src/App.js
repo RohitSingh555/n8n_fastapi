@@ -1,4 +1,4 @@
-import React, { useState, useEffect } from 'react';
+import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
 import { FiSend, FiCheck, FiLinkedin, FiTwitter, FiImage, FiEdit3, FiEye } from 'react-icons/fi';
 
@@ -7,6 +7,7 @@ import SuccessPage from './components/SuccessPage';
 import TabContent from './components/TabContent';
 import SocialMediaForm from './components/SocialMediaForm';
 import logo from './assets/logo.png';
+import API_BASE_URL from './config';
 
 
 
@@ -160,6 +161,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
 
   // Update URL when tab or submissionId changes
   useEffect(() => {
+    console.log('URL update effect triggered:', { submissionId, activeTab });
     if (submissionId) {
       if (activeTab === 'linkedin') {
         navigate(`/feedback/${submissionId}`);
@@ -172,7 +174,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   }, [submissionId, activeTab, navigate]);
 
   // Validate tab completion
-  const validateTab = (tabName) => {
+  const validateTab = useCallback((tabName) => {
     switch (tabName) {
       case 'linkedin':
         // For LinkedIn, any one of the three fields should be filled (mutual exclusion)
@@ -191,14 +193,21 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       default:
         return false;
     }
-  };
+  }, [formData]);
 
   // Update tab validation when form data changes
   useEffect(() => {
+    console.log('Tab validation effect triggered');
+    const linkedinValid = validateTab('linkedin');
+    const twitterValid = validateTab('twitter');
+    const imagesValid = validateTab('images');
+    
+    console.log('Tab validation results:', { linkedin: linkedinValid, twitter: twitterValid, images: imagesValid });
+    
     setTabValidation({
-      linkedin: validateTab('linkedin'),
-      twitter: validateTab('twitter'),
-      images: validateTab('images')
+      linkedin: linkedinValid,
+      twitter: twitterValid,
+      images: imagesValid
     });
   }, [formData, validateTab]);
 
@@ -210,27 +219,28 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     }));
   };
 
-  const handleTabChange = (newTab) => {
-    if (!canAccessTab(newTab)) return;
+  const handleTabChange = useCallback((newTab) => {
+    console.log('Tab change requested:', newTab, 'Current tab:', activeTab);
+    if (!canAccessTab(newTab)) {
+      console.log('Tab access denied for:', newTab);
+      return;
+    }
     
     // Mark current tab as visited
     setVisitedTabs(prev => new Set([...prev, activeTab, newTab]));
     setActiveTab(newTab);
-  };
+    console.log('Tab changed to:', newTab);
+  }, [activeTab]);
 
   const canSubmit = () => {
     // Always enable submit button
     return true;
   };
 
-  const canAccessTab = (tabName) => {
-    // If in edit mode, allow access to all tabs
-    if (isEditMode) return true;
-    
-    // For new submissions, allow access to all tabs
-    const availableTabs = getAvailableTabs();
-    return availableTabs.includes(tabName);
-  };
+  const canAccessTab = useCallback((tabName) => {
+    // Always allow access to all tabs for new submissions and edit mode
+    return true;
+  }, []);
 
   const handleSubmit = async (e) => {
     e.preventDefault();
@@ -243,32 +253,73 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       
       if (isEditMode && submissionId) {
         // Update existing feedback
-        response = await fetch(`/api/feedback/${submissionId}`, {
+        console.log('Sending PUT request to:', `${API_BASE_URL}/api/feedback/${submissionId}`);
+        console.log('Form data being sent:', formData);
+        
+        // Filter out database-specific fields that shouldn't be in the update request
+        const updateData = { ...formData };
+        delete updateData.id;
+        delete updateData.submission_id;
+        delete updateData.created_at;
+        delete updateData.updated_at;
+        
+        console.log('Filtered update data:', updateData);
+        
+        response = await fetch(`${API_BASE_URL}/api/feedback/${submissionId}`, {
           method: 'PUT',
           headers: {
             'Content-Type': 'application/json',
           },
-          body: JSON.stringify(formData)
+          body: JSON.stringify(updateData)
         });
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          console.error('PUT request failed:', response.status, response.statusText);
+          const errorText = await response.text();
+          console.error('Error response:', errorText);
+          throw new Error(`HTTP error! status: ${response.status} - ${errorText}`);
         }
         
         data = await response.json();
         
         // Submit updated feedback to webhook
         try {
-          await fetch('/api/submit-feedback-webhook', {
+          setWebhookStatus({
+            type: 'info',
+            message: 'Feedback updated successfully!',
+            details: 'Now sending to webhook...'
+          });
+          
+          const webhookResponse = await fetch(`${API_BASE_URL}/api/submit-feedback-webhook`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ submission_id: submissionId })
           });
+          
+          if (webhookResponse.ok) {
+            const result = await webhookResponse.json();
+            setWebhookStatus({
+              type: 'success',
+              message: 'Webhook submitted successfully!',
+              details: result.message
+            });
+          } else {
+            const errorData = await webhookResponse.json();
+            setWebhookStatus({
+              type: 'error',
+              message: 'Webhook submission failed',
+              details: errorData.detail || 'Unknown error occurred'
+            });
+          }
         } catch (webhookError) {
           console.warn('Webhook submission failed:', webhookError);
-          // Don't fail the main operation if webhook fails
+          setWebhookStatus({
+            type: 'error',
+            message: 'Webhook submission failed',
+            details: webhookError.message || 'Network error occurred'
+          });
         }
         
         setModal({
@@ -279,7 +330,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
         });
       } else {
         // Create new feedback submission
-        response = await fetch('/api/feedback', {
+        response = await fetch(`${API_BASE_URL}/api/feedback`, {
           method: 'POST',
           headers: {
             'Content-Type': 'application/json',
@@ -295,16 +346,42 @@ To all the healthcare providers out there: what's the biggest challenge AI could
         
         // Submit new feedback to webhook
         try {
-          await fetch('/api/submit-feedback-webhook', {
+          setWebhookStatus({
+            type: 'info',
+            message: 'Feedback submitted successfully!',
+            details: 'Now sending to webhook...'
+          });
+          
+          const webhookResponse = await fetch(`${API_BASE_URL}/api/submit-feedback-webhook`, {
             method: 'POST',
             headers: {
               'Content-Type': 'application/json',
             },
             body: JSON.stringify({ submission_id: data.submission_id })
           });
+          
+          if (webhookResponse.ok) {
+            const result = await webhookResponse.json();
+            setWebhookStatus({
+              type: 'success',
+              message: 'Webhook submitted successfully!',
+              details: result.message
+            });
+          } else {
+            const errorData = await webhookResponse.json();
+            setWebhookStatus({
+              type: 'error',
+              message: 'Webhook submission failed',
+              details: errorData.detail || 'Unknown error occurred'
+            });
+          }
         } catch (webhookError) {
           console.warn('Webhook submission failed:', webhookError);
-          // Don't fail the main operation if webhook fails
+          setWebhookStatus({
+            type: 'error',
+            message: 'Webhook submission failed',
+            details: webhookError.message || 'Network error occurred'
+          });
         }
         
         setModal({
@@ -334,7 +411,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
 
   const loadExistingFeedback = async (id) => {
     try {
-      const response = await fetch(`/api/feedback/${id}`);
+      const response = await fetch(`${API_BASE_URL}/api/feedback/${id}`);
       if (!response.ok) {
         throw new Error(`HTTP error! status: ${response.status}`);
       }
@@ -355,36 +432,94 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   };
 
   const handleWebhookSubmit = async () => {
-    if (!submissionId) {
-      setWebhookStatus({
-        type: 'error',
-        message: 'No submission ID available',
-        details: 'Please save your feedback first before submitting to webhook.'
-      });
-      return;
-    }
-
     setWebhookLoading(true);
     setWebhookStatus(null);
     
     try {
-      const response = await fetch('/api/submit-feedback-webhook', {
+      let currentSubmissionId = submissionId;
+      
+      // If no submission ID exists, we need to create a new submission first
+      if (!currentSubmissionId) {
+        setWebhookStatus({
+          type: 'info',
+          message: 'Saving feedback first...',
+          details: 'Creating new feedback submission before sending to webhook.'
+        });
+        
+        // Create new feedback submission
+        const createResponse = await fetch(`${API_BASE_URL}/api/feedback`, {
+          method: 'POST',
+          headers: {
+            'Content-Type': 'application/json',
+          },
+          body: JSON.stringify(formData)
+        });
+        
+        if (!createResponse.ok) {
+          throw new Error(`Failed to create feedback: ${createResponse.status}`);
+        }
+        
+        const createResult = await createResponse.json();
+        currentSubmissionId = createResult.submission_id;
+        setSubmissionId(currentSubmissionId);
+        
+        setWebhookStatus({
+          type: 'info',
+          message: 'Feedback saved successfully!',
+          details: 'Now sending to webhook...'
+        });
+      } else {
+        // Update existing feedback submission
+        setWebhookStatus({
+          type: 'info',
+          message: 'Updating feedback first...',
+          details: 'Saving changes before sending to webhook.'
+        });
+        
+                 // Filter out database-specific fields for the update request
+         const updateData = { ...formData };
+         delete updateData.id;
+         delete updateData.submission_id;
+         delete updateData.created_at;
+         delete updateData.updated_at;
+         
+         const updateResponse = await fetch(`${API_BASE_URL}/api/feedback/${currentSubmissionId}`, {
+           method: 'PUT',
+           headers: {
+             'Content-Type': 'application/json',
+           },
+           body: JSON.stringify(updateData)
+         });
+        
+        if (!updateResponse.ok) {
+          throw new Error(`Failed to update feedback: ${updateResponse.status}`);
+        }
+        
+        setWebhookStatus({
+          type: 'info',
+          message: 'Feedback updated successfully!',
+          details: 'Now sending to webhook...'
+        });
+      }
+      
+      // Now send to webhook
+      const webhookResponse = await fetch(`${API_BASE_URL}/api/submit-feedback-webhook`, {
         method: 'POST',
         headers: {
           'Content-Type': 'application/json',
         },
-        body: JSON.stringify({ submission_id: submissionId })
+        body: JSON.stringify({ submission_id: currentSubmissionId })
       });
       
-      if (response.ok) {
-        const result = await response.json();
+      if (webhookResponse.ok) {
+        const result = await webhookResponse.json();
         setWebhookStatus({
           type: 'success',
           message: 'Webhook submitted successfully!',
           details: result.message
         });
       } else {
-        const errorData = await response.json();
+        const errorData = await webhookResponse.json();
         setWebhookStatus({
           type: 'error',
           message: 'Webhook submission failed',
@@ -402,19 +537,18 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     }
   };
 
-  const TabButton = ({ id, label, icon: Icon, isActive, isCompleted, isVisited, isEditMode }) => {
+  const TabButton = useCallback(({ id, label, icon: Icon, isActive, isCompleted, isVisited, isEditMode }) => {
     const canAccess = canAccessTab(id);
-    const availableTabs = getAvailableTabs();
     
-    // In edit mode, always show all tabs so users can access all form fields
-    // Otherwise, only show tabs that have content
-    if (!isEditMode && !availableTabs.includes(id)) return null;
+    console.log('TabButton render:', id, 'isActive:', isActive, 'canAccess:', canAccess);
+    
+    // Always show all tabs so users can access all form fields
     
     return (
       <button
         onClick={() => handleTabChange(id)}
         disabled={!canAccess}
-                        className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium transition-all duration-300 text-xs sm:text-sm whitespace-nowrap ${
+        className={`flex items-center gap-1 sm:gap-2 px-3 sm:px-4 py-2 sm:py-3 rounded-xl font-medium transition-all duration-300 text-xs sm:text-sm whitespace-nowrap ${
           isActive 
             ? 'bg-[#5A67A5] text-white shadow-md' 
             : isCompleted
@@ -431,12 +565,12 @@ To all the healthcare providers out there: what's the biggest challenge AI could
         {!canAccess && <FiEye className="text-[#A8B3D4] text-xs sm:text-sm" />}
       </button>
     );
-  };
+  }, [canAccessTab, handleTabChange]);
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EBF5] to-[#A8B3D4]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
-        <div className="max-w-4xl mx-auto">
+        <div className="max-w-7xl mx-auto">
           {/* Header */}
           <header className="text-center mb-8 sm:mb-12">
             {/* Logo */}
@@ -457,7 +591,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
             <h1 className="text-2xl sm:text-3xl lg:text-4xl font-light text-[#3E3E3E] mb-3 sm:mb-4 animate-fade-in">
               n8n Execution Feedback
             </h1>
-            <p className="text-[#5A67A5] text-sm sm:text-base lg:text-lg max-w-2xl mx-auto px-4 animate-fade-in-delay">
+            <p className="text-[#5A67A5] text-sm sm:text-base lg:text-lg max-w-4xl mx-auto px-4 animate-fade-in-delay">
               Collect and manage feedback for n8n execution results
             </p>
             <div className="flex justify-center gap-4 mt-6">
@@ -605,7 +739,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
               />
             </div>
 
-            {/* Submit Button */}
+            {/* Submit Button - Now handles both saving and webhook submission */}
             <div className="text-center">
               <button
                 type="submit"
@@ -624,45 +758,23 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 ) : (
                   <div className="flex items-center gap-3">
                     <FiSend />
-                    <span>{isEditMode ? 'Update Feedback' : 'Submit Feedback'}</span>
+                    <span>{isEditMode ? 'Update Feedback & Submit to Webhook' : 'Submit Feedback & Send to Webhook'}</span>
                   </div>
                 )}
               </button>
               
-              {/* Webhook Submission Button - Only show in edit mode when we have a submission ID */}
-              {isEditMode && submissionId && (
-                <div className="mt-4">
-                  <button
-                    type="button"
-                    onClick={handleWebhookSubmit}
-                    disabled={webhookLoading}
-                    className="px-6 sm:px-8 py-3 sm:py-4 rounded-2xl font-medium transition-all duration-300 shadow-sm hover:shadow-md text-sm sm:text-base bg-blue-600 text-white hover:bg-blue-700 disabled:bg-blue-400"
-                  >
-                    {webhookLoading ? (
-                      <div className="flex items-center gap-3">
-                        <div className="animate-spin rounded-full h-4 w-4 sm:h-5 sm:w-5 border-b-2 border-white"></div>
-                        <span>Submitting to Webhook...</span>
-                      </div>
-                    ) : (
-                      <div className="flex items-center gap-3">
-                        <FiSend />
-                        <span>Submit to Webhook</span>
-                      </div>
-                    )}
-                  </button>
-                  
-                  {/* Webhook Status */}
-                  {webhookStatus && (
-                    <div className={`mt-4 p-3 rounded-lg text-sm max-w-md mx-auto ${
-                      webhookStatus.type === 'success' 
-                        ? 'bg-green-100 text-green-800 border border-green-200' 
-                        : 'bg-red-100 text-red-800 border border-red-200'
-                    }`}>
-                      <div className="font-medium">{webhookStatus.message}</div>
-                      {webhookStatus.details && (
-                        <div className="mt-1 opacity-80">{webhookStatus.details}</div>
-                      )}
-                    </div>
+              {/* Webhook Status - Show for both new submissions and updates */}
+              {webhookStatus && (
+                <div className={`mt-4 p-3 rounded-lg text-sm max-w-md mx-auto ${
+                  webhookStatus.type === 'success' 
+                    ? 'bg-green-100 text-green-800 border border-green-200' 
+                    : webhookStatus.type === 'info'
+                    ? 'bg-blue-100 text-blue-800 border border-blue-200'
+                    : 'bg-red-100 text-red-800 border border-red-200'
+                }`}>
+                  <div className="font-medium">{webhookStatus.message}</div>
+                  {webhookStatus.details && (
+                    <div className="mt-1 opacity-80">{webhookStatus.details}</div>
                   )}
                 </div>
               )}
