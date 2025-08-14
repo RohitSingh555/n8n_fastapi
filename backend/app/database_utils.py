@@ -1,12 +1,8 @@
 """
-Database utility functions for MySQL connection
+Database utility functions for SQLite connection
 """
 import logging
 from sqlalchemy import create_engine, text
-import pymysql
-
-# Ensure PyMySQL is used as the MySQL driver
-pymysql.install_as_MySQLdb()
 
 logger = logging.getLogger(__name__)
 
@@ -22,18 +18,14 @@ def wait_for_database(database_url: str, max_retries: int = 10, retry_interval: 
     Returns:
         bool: True if database is ready, False otherwise
     """
-    logger.info("Waiting for MySQL database to be ready...")
+    logger.info("Waiting for SQLite database to be ready...")
     
     for attempt in range(max_retries):
         try:
             # Create a temporary engine to test connection
             temp_engine = create_engine(
                 database_url,
-                connect_args={
-                    "charset": "utf8mb4",
-                    "autocommit": False,
-                    "sql_mode": "STRICT_TRANS_TABLES"
-                }
+                connect_args={"check_same_thread": False}
             )
             
             # Test the connection
@@ -42,7 +34,7 @@ def wait_for_database(database_url: str, max_retries: int = 10, retry_interval: 
                 result = conn.execute(text("SELECT 1"))
                 result.fetchone()
                 
-            logger.info(f"MySQL database is ready! (attempt {attempt + 1}/{max_retries})")
+            logger.info(f"SQLite database is ready! (attempt {attempt + 1}/{max_retries})")
             return True
             
         except Exception as e:
@@ -68,22 +60,18 @@ def ensure_database_exists(database_url: str, max_retries: int = 3, retry_interv
     Returns:
         bool: True if database exists and is accessible, False otherwise
     """
-    logger.info("Ensuring database exists and is accessible...")
+    logger.info("Ensuring SQLite database exists and is accessible...")
     
     for attempt in range(max_retries):
         try:
             # Test the connection
             temp_engine = create_engine(
                 database_url,
-                connect_args={
-                    "charset": "utf8mb4",
-                    "autocommit": False,
-                    "sql_mode": "STRICT_TRANS_TABLES"
-                }
+                connect_args={"check_same_thread": False}
             )
             with temp_engine.connect() as conn:
                 conn.execute(text("SELECT 1"))
-            logger.info("MySQL database connection successful")
+            logger.info("SQLite database connection successful")
             return True
                 
         except Exception as e:

@@ -38,6 +38,10 @@ class FeedbackSubmission(Base):
     image_feedback = Column(Text)
     image_chosen_llm = Column(String(100))  # Stable, Pixabay, GPT1
     
+    # Separate Image LLM selections for platforms
+    linkedin_image_llm = Column(String(100))  # Stable, Pixabay, GPT1
+    twitter_image_llm = Column(String(100))  # Stable, Pixabay, GPT1
+    
     # Timestamps
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now())
@@ -64,11 +68,16 @@ class SocialMediaPost(Base):
     excluded_llms = Column(Text)  # JSON string of excluded LLMs
     
     # Post Image
-    post_image_type = Column(String(100))  # url, upload, ai-generated, none
-    image_url = Column(Text)
+    post_image_type = Column(String(100))  # "Yes, Image URL", "Yes, Upload Image", "Yes, AI Generated", "No Image Needed"
+    image_url = Column(Text)  # For external image URLs
+    uploaded_image_url = Column(Text)  # For uploaded image URLs
     image_file_path = Column(Text)
     ai_image_style = Column(String(100))
     ai_image_description = Column(Text)
+    
+    # Separate Image LLM selections for platforms
+    linkedin_image_llm = Column(String(100))  # Stable, Pixabay, GPT1
+    twitter_image_llm = Column(String(100))  # Stable, Pixabay, GPT1
     
     # Status
     status = Column(String(50), default="pending")  # pending, processing, completed, failed

@@ -9,6 +9,11 @@ This guide explains how to start and manage the n8n FastAPI services using Docke
 docker compose up -d
 ```
 
+**Note**: The backend service now automatically:
+- Waits for the database to be ready
+- Runs Alembic migrations automatically
+- Starts the FastAPI server
+
 This will start:
 - **MySQL Database** (port 3306)
 - **FastAPI Backend** (port 8000)
@@ -33,7 +38,18 @@ docker compose logs -f frontend
 ## 🗄️ Database Management
 
 ### Run Database Migrations
+
+**Automatic Migrations**: Migrations now run automatically when the backend container starts up. You don't need to run them manually.
+
+**Manual Migration Commands** (if needed):
 ```bash
+# Check migration status
+curl http://localhost:8000/migrations/status
+
+# Manually trigger migrations
+curl http://localhost:8000/migrations/run
+
+# Or use Docker exec (legacy method)
 docker compose exec backend alembic upgrade head
 ```
 
@@ -110,6 +126,21 @@ docker compose logs mysql
 
 # Test database connection
 docker compose exec backend python -c "from app.database import engine; print('Connected' if engine.connect() else 'Failed')"
+```
+
+### Migration Issues
+```bash
+# Check migration status
+curl http://localhost:8000/migrations/status
+
+# Manually trigger migrations
+curl http://localhost:8000/migrations/run
+
+# Check backend logs for migration errors
+docker compose logs backend | grep -i migration
+
+# View full backend startup logs
+docker compose logs backend
 ```
 
 ### Port Conflicts

@@ -1,30 +1,4 @@
 services:
-  # MySQL Database
-  mysql:
-    image: mysql:8.0
-    container_name: n8n_feedback_db
-    environment:
-      MYSQL_ROOT_PASSWORD: root
-      MYSQL_DATABASE: n8n_feedback
-      MYSQL_USER: n8n_user
-      MYSQL_PASSWORD: n8n_password
-      MYSQL_DEFAULT_AUTHENTICATION_PLUGIN: mysql_native_password
-      MYSQL_ROOT_HOST: '%'
-    ports:
-      - "3306:3306"
-    volumes:
-      - mysql_data:/var/lib/mysql
-      - ./mysql_init:/docker-entrypoint-initdb.d
-      - ./mysql_backups:/backups
-    networks:
-      - n8n_network
-    healthcheck:
-      test: ["CMD", "mysqladmin", "ping", "-h", "localhost", "-u", "n8n_user", "-p$$MYSQL_PASSWORD"]
-      interval: 30s
-      timeout: 10s
-      retries: 3
-      start_period: 60s
-    restart: unless-stopped
 
   # FastAPI Backend
   backend:
@@ -33,17 +7,22 @@ services:
       dockerfile: Dockerfile
     container_name: n8n_feedback_backend
     environment:
-      DATABASE_URL: mysql+pymysql://n8n_user:n8n_password@mysql:3306/n8n_feedback
+      DATABASE_URL: sqlite:///app/n8n_feedback.db
+      FRONTEND_URL: http://104.131.8.230:3000
     ports:
-      - "104.131.8.230:8000:8000"
-    depends_on:
-      mysql:
-        condition: service_healthy
+      - "0.0.0.0:8000:8000"
     volumes:
       - ./backend:/app
     networks:
       - n8n_network
-    restart: unless-stopped
+    deploy:
+      resources:
+        limits:
+          memory: 300M
+        reservations:
+          memory: 128M
+    # Command is now handled by startup.sh script
+    restart: always
 
   # React Frontend
   frontend:
@@ -52,7 +31,7 @@ services:
       dockerfile: Dockerfile
     container_name: n8n_feedback_frontend
     ports:
-      - "104.131.8.230:3000:3000"
+      - "3000:3000"
     volumes:
       - ./frontend:/app
       - /app/node_modules
@@ -62,10 +41,17 @@ services:
       - n8n_network
     environment:
       - REACT_APP_API_URL=http://104.131.8.230:8000
+    deploy:
+      resources:
+        limits:
+          memory: 512M
+        reservations:
+          memory: 256M
+    command: npm start -- --max-old-space-size=256
+    restart: always
 
-volumes:
-  mysql_data:
+# No volumes needed for SQLite
 
 networks:
   n8n_network:
-    driver: bridge 
+    driver: bridge

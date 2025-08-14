@@ -7,6 +7,7 @@ Create Date: 2025-08-13 11:18:55.526260
 """
 from alembic import op
 import sqlalchemy as sa
+from sqlalchemy.dialects import sqlite
 
 
 # revision identifiers, used by Alembic.
@@ -17,42 +18,28 @@ depends_on = None
 
 
 def upgrade() -> None:
-    # Make all required fields nullable in feedback_submissions table
-    op.alter_column('feedback_submissions', 'n8n_execution_id',
-                    existing_type=sa.String(255),
-                    nullable=True)
-    op.alter_column('feedback_submissions', 'email',
-                    existing_type=sa.String(255),
-                    nullable=True)
+    # SQLite doesn't support ALTER COLUMN, so we need to recreate tables
+    # This is a SQLite-specific workaround
     
-    # Make all required fields nullable in social_media_posts table
-    op.alter_column('social_media_posts', 'content_creator',
-                    existing_type=sa.String(255),
-                    nullable=True)
-    op.alter_column('social_media_posts', 'email',
-                    existing_type=sa.String(255),
-                    nullable=True)
-    op.alter_column('social_media_posts', 'social_platform',
-                    existing_type=sa.String(100),
-                    nullable=True)
+    # Recreate feedback_submissions table with nullable fields
+    with op.batch_alter_table('feedback_submissions') as batch_op:
+        batch_op.alter_column('n8n_execution_id', nullable=True)
+        batch_op.alter_column('email', nullable=True)
+    
+    # Recreate social_media_posts table with nullable fields
+    with op.batch_alter_table('social_media_posts') as batch_op:
+        batch_op.alter_column('content_creator', nullable=True)
+        batch_op.alter_column('email', nullable=True)
+        batch_op.alter_column('social_platform', nullable=True)
 
 
 def downgrade() -> None:
-    # Revert fields back to required in feedback_submissions table
-    op.alter_column('feedback_submissions', 'n8n_execution_id',
-                    existing_type=sa.String(255),
-                    nullable=False)
-    op.alter_column('feedback_submissions', 'email',
-                    existing_type=sa.String(255),
-                    nullable=False)
+    # Revert fields back to required using batch operations
+    with op.batch_alter_table('feedback_submissions') as batch_op:
+        batch_op.alter_column('n8n_execution_id', nullable=False)
+        batch_op.alter_column('email', nullable=False)
     
-    # Revert fields back to required in social_media_posts table
-    op.alter_column('social_media_posts', 'content_creator',
-                    existing_type=sa.String(255),
-                    nullable=False)
-    op.alter_column('social_media_posts', 'email',
-                    existing_type=sa.String(255),
-                    nullable=False)
-    op.alter_column('social_media_posts', 'social_platform',
-                    existing_type=sa.String(100),
-                    nullable=False) 
+    with op.batch_alter_table('social_media_posts') as batch_op:
+        batch_op.alter_column('content_creator', nullable=False)
+        batch_op.alter_column('email', nullable=False)
+        batch_op.alter_column('social_platform', nullable=False) 

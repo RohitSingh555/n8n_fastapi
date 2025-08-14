@@ -3,49 +3,26 @@ from sqlalchemy.ext.declarative import declarative_base
 from sqlalchemy.orm import sessionmaker
 import os
 from dotenv import load_dotenv
-import pymysql
 import logging
 
 # Configure logging
 logger = logging.getLogger(__name__)
 
-# Ensure PyMySQL is used as the MySQL driver
-try:
-    pymysql.install_as_MySQLdb()
-    logger.info("PyMySQL successfully installed as MySQLdb replacement")
-except Exception as e:
-    logger.warning(f"Could not install PyMySQL as MySQLdb replacement: {e}")
-
 load_dotenv()
 
-# Database URL - explicitly use pymysql dialect
-DATABASE_URL = os.getenv("DATABASE_URL", "mysql+pymysql://n8n_user:n8n_password@mysql:3306/n8n_feedback")
+# Database URL - using SQLite
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/n8n_feedback.db")
 logger.info(f"Using database URL: {DATABASE_URL}")
 
-# Create engine with MySQL-specific configuration
+# Create engine with SQLite configuration
 try:
     engine = create_engine(
         DATABASE_URL,
-        pool_pre_ping=True,
-        pool_recycle=300,
-        pool_size=10,
-        max_overflow=20,
+        connect_args={"check_same_thread": False},  # Required for SQLite with multiple threads
         echo=False,  # Set to True for SQL debugging
-        # Explicitly specify the driver to avoid MySQLdb import issues
-        connect_args={
-            "charset": "utf8mb4",
-            "autocommit": False,
-            "sql_mode": "STRICT_TRANS_TABLES",
-            "connect_timeout": 60,
-            "read_timeout": 60,
-            "write_timeout": 60
-        },
-        # Force PyMySQL usage and avoid MySQLdb
-        poolclass=None,
-        # Additional PyMySQL configuration
-        isolation_level="READ_COMMITTED"
+        pool_pre_ping=True
     )
-    logger.info("Database engine created successfully")
+    logger.info("SQLite database engine created successfully")
 except Exception as e:
     logger.error(f"Failed to create database engine: {e}")
     raise
@@ -70,28 +47,16 @@ def recreate_engine():
     """Recreate the database engine if needed"""
     global engine, SessionLocal
     try:
-        logger.info("Recreating database engine...")
+        logger.info("Recreating SQLite database engine...")
         engine.dispose()
         engine = create_engine(
             DATABASE_URL,
-            pool_pre_ping=True,
-            pool_recycle=300,
-            pool_size=10,
-            max_overflow=20,
+            connect_args={"check_same_thread": False},
             echo=False,
-            connect_args={
-                "charset": "utf8mb4",
-                "autocommit": False,
-                "sql_mode": "STRICT_TRANS_TABLES",
-                "connect_timeout": 60,
-                "read_timeout": 60,
-                "write_timeout": 60
-            },
-            poolclass=None,
-            isolation_level="READ_COMMITTED"
+            pool_pre_ping=True
         )
         SessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
-        logger.info("Database engine recreated successfully")
+        logger.info("SQLite database engine recreated successfully")
         return True
     except Exception as e:
         logger.error(f"Failed to recreate database engine: {e}")

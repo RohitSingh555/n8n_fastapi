@@ -4,10 +4,6 @@ from sqlalchemy import pool
 from alembic import context
 import os
 import sys
-import pymysql
-
-# Ensure PyMySQL is used as the MySQL driver
-pymysql.install_as_MySQLdb()
 
 # Add the parent directory to the Python path
 sys.path.append(os.path.dirname(os.path.dirname(os.path.abspath(__file__))))
@@ -73,11 +69,7 @@ def run_migrations_online() -> None:
         configuration,
         prefix="sqlalchemy.",
         poolclass=pool.NullPool,
-        connect_args={
-            "charset": "utf8mb4",
-            "autocommit": False,
-            "sql_mode": "STRICT_TRANS_TABLES"
-        }
+        connect_args={"check_same_thread": False}
     )
 
     with connectable.connect() as connection:

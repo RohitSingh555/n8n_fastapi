@@ -97,7 +97,11 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     pixabay_image_url: 'https://example.com/pixabay-image.jpg',
     gpt1_image_url: 'https://example.com/gpt1-image.jpg',
     image_feedback: '',
-    image_chosen_llm: ''
+    image_chosen_llm: '',
+    
+    // Separate Image LLM selections for platforms
+    linkedin_image_llm: '',
+    twitter_image_llm: ''
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -187,9 +191,10 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                (formData.x_chosen_llm && formData.x_chosen_llm !== '') || 
                (formData.x_custom_content && formData.x_custom_content.trim() !== '');
       case 'images':
-        // For Images, any one of the two fields should be filled (mutual exclusion)
+        // For Images, any one of the three fields should be filled (mutual exclusion)
         return (formData.image_feedback && formData.image_feedback.trim() !== '') || 
-               (formData.image_chosen_llm && formData.image_chosen_llm !== '');
+               (formData.linkedin_image_llm && formData.linkedin_image_llm !== '') ||
+               (formData.twitter_image_llm && formData.twitter_image_llm !== '');
       default:
         return false;
     }

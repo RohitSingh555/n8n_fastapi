@@ -28,6 +28,10 @@ class FeedbackSubmissionBase(BaseModel):
     gpt1_image_url: Optional[str] = None
     image_feedback: Optional[str] = None
     image_chosen_llm: Optional[str] = None
+    
+    # Separate Image LLM selections for platforms
+    linkedin_image_llm: Optional[str] = None
+    twitter_image_llm: Optional[str] = None
 
 class FeedbackSubmissionCreate(FeedbackSubmissionBase):
     pass
@@ -65,6 +69,10 @@ class FeedbackSubmissionUpdate(BaseModel):
     gpt1_image_url: Optional[str] = None
     image_feedback: Optional[str] = None
     image_chosen_llm: Optional[str] = None
+    
+    # Separate Image LLM selections for platforms
+    linkedin_image_llm: Optional[str] = None
+    twitter_image_llm: Optional[str] = None
 
 class FeedbackSubmissionResponse(BaseModel):
     # Make ALL fields completely optional with explicit None defaults
@@ -97,6 +105,10 @@ class FeedbackSubmissionResponse(BaseModel):
     gpt1_image_url: Optional[str] = None
     image_feedback: Optional[str] = None
     image_chosen_llm: Optional[str] = None
+    
+    # Separate Image LLM selections for platforms
+    linkedin_image_llm: Optional[str] = None
+    twitter_image_llm: Optional[str] = None
 
     class Config:
         from_attributes = True
@@ -118,10 +130,17 @@ class SocialMediaPostBase(BaseModel):
     excluded_llms: Optional[str] = None  # JSON string
     post_image_type: Optional[str] = None
     image_url: Optional[str] = None
+    uploaded_image_url: Optional[str] = None
     image_file_path: Optional[str] = None
     ai_image_style: Optional[str] = None
     ai_image_description: Optional[str] = None
-    status: Optional[str] = "pending"
+    status: Optional[str] = None
+    created_at: Optional[datetime] = None
+    updated_at: Optional[datetime] = None
+    
+    # Separate Image LLM selections for platforms
+    linkedin_image_llm: Optional[str] = None
+    twitter_image_llm: Optional[str] = None
 
 
 class SocialMediaPostCreate(SocialMediaPostBase):
@@ -137,6 +156,7 @@ class SocialMediaPostUpdate(BaseModel):
     excluded_llms: Optional[str] = None
     post_image_type: Optional[str] = None
     image_url: Optional[str] = None
+    uploaded_image_url: Optional[str] = None
     image_file_path: Optional[str] = None
     ai_image_style: Optional[str] = None
     ai_image_description: Optional[str] = None
@@ -155,6 +175,7 @@ class SocialMediaPostResponse(BaseModel):
     excluded_llms: Optional[str] = None
     post_image_type: Optional[str] = None
     image_url: Optional[str] = None
+    uploaded_image_url: Optional[str] = None
     image_file_path: Optional[str] = None
     ai_image_style: Optional[str] = None
     ai_image_description: Optional[str] = None

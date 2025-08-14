@@ -417,7 +417,9 @@ const TabContent = ({
   const renderImageContent = () => {
     // Check which fields are filled to determine which ones should be disabled
     const hasFeedback = formData.image_feedback?.trim() !== '';
-    const hasLLM = formData.image_chosen_llm?.trim() !== '';
+    const hasLinkedInLLM = formData.linkedin_image_llm?.trim() !== '';
+    const hasTwitterLLM = formData.twitter_image_llm?.trim() !== '';
+    const hasLLM = hasLinkedInLLM || hasTwitterLLM;
     
     // If any field is filled, disable the other
     const isFeedbackDisabled = hasLLM;
@@ -477,7 +479,10 @@ const TabContent = ({
                     target: { name: 'image_feedback', value: '' }
                   });
                   handleInputChange({
-                    target: { name: 'image_chosen_llm', value: '' }
+                    target: { name: 'linkedin_image_llm', value: '' }
+                  });
+                  handleInputChange({
+                    target: { name: 'twitter_image_llm', value: '' }
                   });
                 }}
                 className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors duration-200"
@@ -511,16 +516,30 @@ const TabContent = ({
             />
           </div>
           
-          <div>
-            <RadioGroup
-              name="image_chosen_llm"
-              value={formData.image_chosen_llm}
-              onChange={handleInputChange}
-              options={imageOptions}
-              label={`Choose Image LLM${isLLMDisabled ? ' (Disabled)' : ''}`}
-              required
-              disabled={isLLMDisabled}
-            />
+          <div className="space-y-6">
+            <div>
+              <RadioGroup
+                name="linkedin_image_llm"
+                value={formData.linkedin_image_llm}
+                onChange={handleInputChange}
+                options={imageOptions}
+                label="Choose LinkedIn Image LLM *"
+                required
+                disabled={isLLMDisabled}
+              />
+            </div>
+            
+            <div>
+              <RadioGroup
+                name="twitter_image_llm"
+                value={formData.twitter_image_llm}
+                onChange={handleInputChange}
+                options={imageOptions}
+                label="Choose Twitter Image LLM *"
+                required
+                disabled={isLLMDisabled}
+              />
+            </div>
           </div>
         </div>
       </div>
