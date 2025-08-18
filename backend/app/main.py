@@ -88,6 +88,7 @@ def determine_post_image_type(post_image_radio: str) -> str:
     - "Image URL" → "Yes, Image URL"
     - "Upload Image" → "Yes, Upload Image"
     - "AI Generated" → "Yes, AI Generated"
+    - "No image" → "No Image Needed"
     - Empty/None → "No Image Needed"
     - Other values → Keep original value
     
@@ -112,6 +113,9 @@ def determine_post_image_type(post_image_radio: str) -> str:
     elif "AI Generated" in post_image_radio:
         logger.info("Radio contains 'AI Generated', setting to 'Yes, AI Generated'")
         return "Yes, AI Generated"
+    elif "No image" in post_image_radio:
+        logger.info("Radio contains 'No image', setting to 'No Image Needed'")
+        return "No Image Needed"
     else:
         # If radio has a value but doesn't match expected patterns, use the original value
         logger.info(f"Radio value '{post_image_radio}' doesn't match expected patterns, keeping original value")
@@ -815,21 +819,31 @@ async def update_feedback_submission_raw(
                     }
                 )
         
-        # Update only the fields that are provided
-        if raw_data:
-            # Log escape characters in the update data
-            log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
-            
-            # Validate and log content with escape characters
-            for field_name, field_value in raw_data.items():
-                if isinstance(field_value, str) and field_value:
-                    raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
-            
-            raw_data['updated_at'] = datetime.utcnow()
-            
-            for field, value in raw_data.items():
-                if hasattr(db_feedback, field):
-                    setattr(db_feedback, field, value)
+                    # Update only the fields that are provided
+            if raw_data:
+                # Log escape characters in the update data
+                log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
+                
+                # Validate and log content with escape characters
+                for field_name, field_value in raw_data.items():
+                    if isinstance(field_value, str) and field_value:
+                        raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
+                
+                raw_data['updated_at'] = datetime.utcnow()
+                
+                for field, value in raw_data.items():
+                    if hasattr(db_feedback, field):
+                        # Special handling for n8n_execution_id: only update if current value is empty/None
+                        if field == 'n8n_execution_id':
+                            current_value = getattr(db_feedback, field)
+                            if current_value is None or current_value == '':
+                                logger.info(f"Updating n8n_execution_id from '{current_value}' to '{value}'")
+                                setattr(db_feedback, field, value)
+                            else:
+                                logger.info(f"Skipping n8n_execution_id update - current value '{current_value}' is not empty")
+                        else:
+                            # For all other fields, update normally
+                            setattr(db_feedback, field, value)
             
             db.commit()
             db.refresh(db_feedback)
@@ -1655,6 +1669,7 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                     post_id=str(uuid.uuid4()),
                     content_creator=clean_webhook_value(webhook_data.get("Content Creator", "")),
                     email=email,
+                    feedback_submission_id=feedback_submission.submission_id,  # Link to feedback submission
                     social_platform=clean_webhook_value(webhook_data.get("Social Platforms", "")),
                     custom_content=clean_webhook_value(webhook_data.get("Custom Content?", "")),
                     ai_prompt=clean_webhook_value(webhook_data.get("AI Prompted Text Generation", "")),
@@ -1717,7 +1732,7 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
         # Forward the request to the n8n webhook
         async with httpx.AsyncClient() as client:
             # Get webhook URL from environment variable
-            webhook_url = os.getenv("N8N_WEBHOOK_URL", "https://ultrasoundai.app.n8n.cloud/webhook/b2d454f5-3dde-4d56-9bff-5e1f23b7d94b")
+            webhook_url = os.getenv("N8N_WEBHOOK_URL", "https://ultrasoundai.app.n8n.cloud/webhook/1ef36a73-0e04-4cf5-ae0c-c3f1dca496ba")
             
             response = await client.post(
                 webhook_url,
@@ -1775,9 +1790,9 @@ async def submit_feedback_webhook(
         if not feedback_submission:
             raise HTTPException(status_code=404, detail="Feedback submission not found")
         
-        # Get social media post data
+        # Get social media post data linked to this feedback submission
         social_media_post = db.query(models.SocialMediaPost).filter(
-            models.SocialMediaPost.email == feedback_submission.email
+            models.SocialMediaPost.feedback_submission_id == feedback_submission.submission_id
         ).first()
         
         # Helper function to clean webhook values
@@ -1847,7 +1862,7 @@ async def submit_feedback_webhook(
         webhook_payload["Twitter Image LLM"] = feedback_submission.twitter_image_llm or ""
         
         # Submit to the specified webhook URL
-        webhook_url = "https://ultrasoundai.app.n8n.cloud/webhook-test/3f455a01-2e10-4605-9a9c-d2e6da548bb5"
+        webhook_url = "https://ultrasoundai.app.n8n.cloud/webhook/3f455a01-2e10-4605-9a9c-d2e6da548bb5"
         
         async with httpx.AsyncClient() as client:
             response = await client.post(

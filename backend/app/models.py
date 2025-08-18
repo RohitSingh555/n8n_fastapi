@@ -57,6 +57,9 @@ class SocialMediaPost(Base):
     content_creator = Column(String(255), nullable=True)  # creator ID
     email = Column(String(255), nullable=True)
     
+    # Foreign Key to Feedback Submission
+    feedback_submission_id = Column(String(255), nullable=True)
+    
     # Social Platform
     social_platform = Column(String(100), nullable=True)  # linkedin, twitter
     

@@ -124,6 +124,7 @@ class FeedbackSubmissionResponse(BaseModel):
 class SocialMediaPostBase(BaseModel):
     content_creator: Optional[str] = None
     email: Optional[str] = None
+    feedback_submission_id: Optional[str] = None
     social_platform: Optional[str] = None
     custom_content: Optional[str] = None
     ai_prompt: Optional[str] = None
@@ -169,6 +170,7 @@ class SocialMediaPostResponse(BaseModel):
     post_id: Optional[str] = None
     content_creator: Optional[str] = None
     email: Optional[str] = None
+    feedback_submission_id: Optional[str] = None
     social_platform: Optional[str] = None
     custom_content: Optional[str] = None
     ai_prompt: Optional[str] = None
