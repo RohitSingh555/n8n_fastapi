@@ -29,6 +29,10 @@ class FeedbackSubmissionBase(BaseModel):
     image_feedback: Optional[str] = None
     image_chosen_llm: Optional[str] = None
     
+    # Additional image fields for feedback form
+    image_url: Optional[str] = None  # For external image URLs
+    uploaded_image_url: Optional[str] = None  # For uploaded image URLs
+    
     # Separate Image LLM selections for platforms
     linkedin_image_llm: Optional[str] = None
     twitter_image_llm: Optional[str] = None
@@ -70,6 +74,10 @@ class FeedbackSubmissionUpdate(BaseModel):
     image_feedback: Optional[str] = None
     image_chosen_llm: Optional[str] = None
     
+    # Additional image fields for feedback form
+    image_url: Optional[str] = None
+    uploaded_image_url: Optional[str] = None
+    
     # Separate Image LLM selections for platforms
     linkedin_image_llm: Optional[str] = None
     twitter_image_llm: Optional[str] = None
@@ -105,6 +113,10 @@ class FeedbackSubmissionResponse(BaseModel):
     gpt1_image_url: Optional[str] = None
     image_feedback: Optional[str] = None
     image_chosen_llm: Optional[str] = None
+    
+    # Additional image fields for feedback form
+    image_url: Optional[str] = None
+    uploaded_image_url: Optional[str] = None
     
     # Separate Image LLM selections for platforms
     linkedin_image_llm: Optional[str] = None

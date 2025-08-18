@@ -99,6 +99,10 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     image_feedback: '',
     image_chosen_llm: '',
     
+    // Additional image fields for feedback form
+    image_url: '',
+    uploaded_image_url: '',
+    
     // Separate Image LLM selections for platforms
     linkedin_image_llm: '',
     twitter_image_llm: ''
@@ -135,7 +139,9 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   const hasImageContent = () => {
     return formData.stable_diffusion_image_url?.trim() || 
            formData.pixabay_image_url?.trim() || 
-           formData.gpt1_image_url?.trim();
+           formData.gpt1_image_url?.trim() ||
+           formData.image_url?.trim() ||
+           formData.uploaded_image_url?.trim();
   };
 
   // Get available tabs

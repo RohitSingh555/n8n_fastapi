@@ -38,6 +38,10 @@ class FeedbackSubmission(Base):
     image_feedback = Column(Text)
     image_chosen_llm = Column(String(100))  # Stable, Pixabay, GPT1
     
+    # Additional image fields for feedback form
+    image_url = Column(Text)  # For external image URLs
+    uploaded_image_url = Column(Text)  # For uploaded image URLs
+    
     # Separate Image LLM selections for platforms
     linkedin_image_llm = Column(String(100))  # Stable, Pixabay, GPT1
     twitter_image_llm = Column(String(100))  # Stable, Pixabay, GPT1

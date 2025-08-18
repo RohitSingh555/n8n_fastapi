@@ -24,21 +24,21 @@ const ImagePreview = ({ title, url, icon: Icon, isPrefilled = true }) => {
           <h4 className="text-sm sm:text-lg font-medium text-slate-800">{title}</h4>
         </div>
         
-        {/* Image Container with Fixed Height */}
-        <div className="h-32 sm:h-48 rounded-2xl border-2 border-slate-200 overflow-hidden">
+        {/* Image Container with Flexible Height */}
+        <div className="relative w-full">
           {url ? (
-            <div className="relative w-full h-full">
+            <div className="relative w-full">
               <img 
                 src={url} 
                 alt={title}
-                className="w-full h-full object-cover cursor-pointer hover:opacity-90 transition-opacity duration-200"
+                className="w-full h-auto max-h-48 object-contain rounded-xl border-2 border-slate-200 cursor-pointer hover:opacity-90 transition-opacity duration-200 shadow-sm"
                 onClick={openModal}
                 onError={(e) => {
                   e.target.style.display = 'none';
                   e.target.nextSibling.style.display = 'flex';
                 }}
               />
-              <div className="hidden absolute inset-0 bg-slate-100 items-center justify-center">
+              <div className="hidden absolute inset-0 bg-slate-100 items-center justify-center rounded-xl">
                 <div className="flex flex-col items-center gap-2 text-slate-400">
                   <FiFrown className="w-8 h-8" />
                   <p className="text-sm font-medium">Image not available</p>
@@ -46,7 +46,7 @@ const ImagePreview = ({ title, url, icon: Icon, isPrefilled = true }) => {
               </div>
             </div>
           ) : (
-            <div className="w-full h-full bg-slate-100 flex items-center justify-center">
+            <div className="w-full h-32 bg-slate-100 flex items-center justify-center rounded-xl border-2 border-slate-200">
               <div className="flex flex-col items-center gap-2 text-slate-400">
                 <FiImage className="w-8 h-8" />
                 <p className="text-sm font-medium">No image provided</p>

@@ -819,42 +819,39 @@ async def update_feedback_submission_raw(
                     }
                 )
         
-                    # Update only the fields that are provided
-            if raw_data:
-                # Log escape characters in the update data
-                log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
-                
-                # Validate and log content with escape characters
-                for field_name, field_value in raw_data.items():
-                    if isinstance(field_value, str) and field_value:
-                        raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
-                
-                raw_data['updated_at'] = datetime.utcnow()
-                
-                for field, value in raw_data.items():
-                    if hasattr(db_feedback, field):
-                        # Special handling for n8n_execution_id: only update if current value is empty/None
-                        if field == 'n8n_execution_id':
-                            current_value = getattr(db_feedback, field)
-                            if current_value is None or current_value == '':
-                                logger.info(f"Updating n8n_execution_id from '{current_value}' to '{value}'")
-                                setattr(db_feedback, field, value)
-                            else:
-                                logger.info(f"Skipping n8n_execution_id update - current value '{current_value}' is not empty")
-                        else:
-                            # For all other fields, update normally
+        # Update only the fields that are provided
+        if raw_data:
+            # Log escape characters in the update data
+            log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
+            
+            # Validate and log content with escape characters
+            for field_name, field_value in raw_data.items():
+                if isinstance(field_value, str) and field_value:
+                    raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
+            
+            raw_data['updated_at'] = datetime.utcnow()
+            
+            for field, value in raw_data.items():
+                if hasattr(db_feedback, field):
+                    # Special handling for n8n_execution_id: only update if current value is empty/None
+                    if field == 'n8n_execution_id':
+                        current_value = getattr(db_feedback, field)
+                        if current_value is None or current_value == '':
+                            logger.info(f"Updating n8n_execution_id from '{current_value}' to '{value}'")
                             setattr(db_feedback, field, value)
-            
-            db.commit()
-            db.refresh(db_feedback)
-            
-            logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
-            # Return the updated feedback submission object to match the response_model
-            return db_feedback
-        else:
-            logger.info(f"No fields to update for submission ID: {submission_id}")
-            # Return the existing feedback submission object to match the response_model
-            return db_feedback
+                        else:
+                            logger.info(f"Skipping n8n_execution_id update - current value '{current_value}' is not empty")
+                    else:
+                        # For all other fields, update normally
+                        logger.info(f"Updating field '{field}' to '{value}'")
+                        setattr(db_feedback, field, value)
+        
+        db.commit()
+        db.refresh(db_feedback)
+        
+        logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
+        # Return the updated feedback submission object to match the response_model
+        return db_feedback
             
     except HTTPException:
         raise
@@ -1844,6 +1841,10 @@ async def submit_feedback_webhook(
             "gpt1_image_url": clean_webhook_value(feedback_submission.gpt1_image_url),
             "image_feedback": clean_webhook_value(feedback_submission.image_feedback),
             "image_chosen_llm": clean_webhook_value(feedback_submission.image_chosen_llm),
+            
+            # Additional Image Fields from Feedback Submission
+            "feedback_image_url": clean_webhook_value(feedback_submission.image_url),
+            "feedback_uploaded_image_url": clean_webhook_value(feedback_submission.uploaded_image_url),
             
             # Separate Image LLM selections for platforms
             "linkedin_image_llm": clean_webhook_value(feedback_submission.linkedin_image_llm),

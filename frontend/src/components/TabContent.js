@@ -463,6 +463,65 @@ const TabContent = ({
           )}
         </div>
 
+        {/* Additional Image Previews */}
+        <div className="space-y-8">
+          {formData.image_url?.trim() && (
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-blue-100 rounded-xl">
+                  <FiImage className="w-5 h-5 text-blue-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-slate-800">Image Preview</h4>
+              </div>
+              <div className="relative w-full max-w-2xl mx-auto">
+                <img 
+                  src={formData.image_url} 
+                  alt="Image Preview"
+                  className="w-full h-auto max-h-96 object-contain rounded-xl shadow-lg border border-slate-200 hover:shadow-xl transition-shadow duration-300"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="hidden absolute inset-0 bg-slate-100 items-center justify-center rounded-xl">
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <FiImage className="w-8 h-8" />
+                    <p className="text-sm font-medium">Image not available</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+          
+          {formData.uploaded_image_url?.trim() && (
+            <div className="bg-gradient-to-br from-slate-50 to-slate-100 border border-slate-200 rounded-2xl p-6 shadow-sm hover:shadow-md transition-all duration-300">
+              <div className="flex items-center gap-3 mb-4">
+                <div className="p-2 bg-green-100 rounded-xl">
+                  <FiImage className="w-5 h-5 text-green-600" />
+                </div>
+                <h4 className="text-lg font-semibold text-slate-800">Uploaded Image Preview</h4>
+              </div>
+              <div className="relative w-full max-w-2xl mx-auto">
+                <img 
+                  src={formData.uploaded_image_url} 
+                  alt="Uploaded Image Preview"
+                  className="w-full h-auto max-h-96 object-contain rounded-xl shadow-lg border border-slate-200 hover:shadow-xl transition-shadow duration-300"
+                  onError={(e) => {
+                    e.target.style.display = 'none';
+                    e.target.nextSibling.style.display = 'flex';
+                  }}
+                />
+                <div className="hidden absolute inset-0 bg-slate-100 items-center justify-center rounded-xl">
+                  <div className="flex flex-col items-center gap-2 text-slate-400">
+                    <FiImage className="w-8 h-8" />
+                    <p className="text-sm font-medium">Image not available</p>
+                  </div>
+                </div>
+              </div>
+            </div>
+          )}
+        </div>
+
         {/* Mutual exclusion notice */}
         {(hasFeedback || hasLLM) && (
           <div className="bg-blue-50 border border-blue-200 rounded-xl p-4">
