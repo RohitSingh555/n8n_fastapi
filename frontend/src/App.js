@@ -78,32 +78,32 @@ Technology should augment expertise, not replace it. At Ultrasound AI, we're bui
 
 To all the healthcare providers out there: what's the biggest challenge AI could help you solve? #UltrasoundAI #AIinMedicine #ClinicalSupport #FutureOfHealth #DigitalHealth #PhysicianBurnout`,
     
-    linkedin_feedback: '',
-    linkedin_chosen_llm: '',
-    linkedin_custom_content: '',
+    linkedin_feedback: null,
+    linkedin_chosen_llm: null,
+    linkedin_custom_content: null,
     
     // X Content
     x_grok_content: 'Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...Sample X/Twitter Grok content would appear here...',
     x_o3_content: 'Sample X/Twitter o3 content would appear here...',
     x_gemini_content: 'Sample X/Twitter Gemini content would appear here...',
-    x_feedback: '',
-    x_chosen_llm: '',
-    x_custom_content: '',
+    x_feedback: null,
+    x_chosen_llm: null,
+    x_custom_content: null,
     
     // Image URLs
     stable_diffusion_image_url: 'https://example.com/stable-diffusion-image.jpg',
     pixabay_image_url: 'https://example.com/pixabay-image.jpg',
     gpt1_image_url: 'https://example.com/gpt1-image.jpg',
-    image_feedback: '',
-    image_chosen_llm: '',
+    image_feedback: null,
+    image_chosen_llm: null,
     
     // Additional image fields for feedback form
     image_url: '',
     uploaded_image_url: '',
     
     // Separate Image LLM selections for platforms
-    linkedin_image_llm: '',
-    twitter_image_llm: ''
+    linkedin_image_llm: null,
+    twitter_image_llm: null
   };
 
   const [formData, setFormData] = useState(initialFormData);
@@ -164,6 +164,25 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     }
   }, [urlSubmissionId, urlActiveTab]);
 
+  // Auto-clear form fields on page load to show the mutual exclusion notice
+  useEffect(() => {
+    // Only auto-clear if we're not in edit mode and no submission ID
+    if (!isEditMode && !submissionId) {
+      // Simulate clicking the "Clear All" button for LinkedIn tab
+      setFormData(prev => ({
+        ...prev,
+        linkedin_feedback: null,
+        linkedin_chosen_llm: null,
+        linkedin_custom_content: null,
+        x_feedback: null,
+        x_chosen_llm: null,
+        x_custom_content: null,
+        image_feedback: null,
+        image_chosen_llm: null
+      }));
+    }
+  }, []); // Empty dependency array means this runs once on mount
+
   useEffect(() => {
     console.log('URL update effect triggered:', { submissionId, activeTab });
     if (submissionId) {
@@ -181,33 +200,185 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   const validateTab = useCallback((tabName) => {
     switch (tabName) {
       case 'linkedin':
-        // For LinkedIn, any one of the three fields should be filled (mutual exclusion)
-        return (formData.linkedin_feedback && formData.linkedin_feedback.trim() !== '') || 
-               (formData.linkedin_chosen_llm && formData.linkedin_chosen_llm !== '') || 
-               (formData.linkedin_custom_content && formData.linkedin_custom_content.trim() !== '');
+        // For LinkedIn, exactly one of the three fields should be filled (mutual exclusion)
+        const linkedinFields = [
+          formData.linkedin_feedback,
+          formData.linkedin_chosen_llm,
+          formData.linkedin_custom_content
+        ];
+        const filledLinkedInFields = linkedinFields.filter(field => field && field.trim() !== '');
+        return filledLinkedInFields.length === 1;
       case 'twitter':
-        // For Twitter, any one of the three fields should be filled (mutual exclusion)
-        return (formData.x_feedback && formData.x_feedback.trim() !== '') || 
-               (formData.x_chosen_llm && formData.x_chosen_llm !== '') || 
-               (formData.x_custom_content && formData.x_custom_content.trim() !== '');
+        // For Twitter, exactly one of the three fields should be filled (mutual exclusion)
+        const twitterFields = [
+          formData.x_feedback,
+          formData.x_chosen_llm,
+          formData.x_custom_content
+        ];
+        const filledTwitterFields = twitterFields.filter(field => field && field.trim() !== '');
+        return filledTwitterFields.length === 1;
       case 'images':
-        // For Images, any one of the three fields should be filled (mutual exclusion)
-        return (formData.image_feedback && formData.image_feedback.trim() !== '') || 
-               (formData.linkedin_image_llm && formData.linkedin_image_llm !== '') ||
-               (formData.twitter_image_llm && formData.twitter_image_llm !== '');
+        // For Images, exactly one of the three fields should be filled (mutual exclusion)
+        const imageFields = [
+          formData.image_feedback,
+          formData.linkedin_image_llm,
+          formData.twitter_image_llm
+        ];
+        const filledImageFields = imageFields.filter(field => field && field.trim() !== '');
+        return filledImageFields.length === 1;
       default:
         return false;
     }
   }, [formData]);
 
+  // Enhanced validation with detailed error messages
+  const validateForm = useCallback(() => {
+    const errors = [];
+    
+    // Required field validation
+    if (!formData.n8n_execution_id?.trim()) {
+      errors.push({ field: 'n8n_execution_id', message: 'N8N Execution ID is required' });
+    }
+    
+    if (!formData.email?.trim()) {
+      errors.push({ field: 'email', message: 'Email is required' });
+    } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(formData.email)) {
+      errors.push({ field: 'email', message: 'Please enter a valid email address' });
+    }
+    
+    // Tab-specific validation
+    const availableTabs = getAvailableTabs();
+    
+    if (availableTabs.includes('linkedin')) {
+      const linkedinFields = [
+        formData.linkedin_feedback,
+        formData.linkedin_chosen_llm,
+        formData.linkedin_custom_content
+      ];
+      const filledLinkedInFields = linkedinFields.filter(field => field && field.trim() !== '');
+      
+      if (filledLinkedInFields.length === 0) {
+        errors.push({ field: 'linkedin', message: 'LinkedIn tab: Please provide feedback, select an LLM, or enter custom content' });
+      } else if (filledLinkedInFields.length > 1) {
+        errors.push({ field: 'linkedin', message: 'LinkedIn tab: Only one feedback method can be used at a time' });
+      }
+    }
+    
+    if (availableTabs.includes('twitter')) {
+      const twitterFields = [
+        formData.x_feedback,
+        formData.x_chosen_llm,
+        formData.x_custom_content
+      ];
+      const filledTwitterFields = twitterFields.filter(field => field && field.trim() !== '');
+      
+      if (filledTwitterFields.length === 0) {
+        errors.push({ field: 'twitter', message: 'Twitter tab: Please provide feedback, select an LLM, or enter custom content' });
+      } else if (filledTwitterFields.length > 1) {
+        errors.push({ field: 'twitter', message: 'Twitter tab: Only one feedback method can be used at a time' });
+      }
+    }
+    
+    if (availableTabs.includes('images')) {
+      const imageFields = [
+        formData.image_feedback,
+        formData.linkedin_image_llm,
+        formData.twitter_image_llm
+      ];
+      const filledImageFields = imageFields.filter(field => field && field.trim() !== '');
+      
+      if (filledImageFields.length === 0) {
+        errors.push({ field: 'images', message: 'Images tab: Please provide feedback or select image LLMs' });
+      } else if (filledImageFields.length > 1) {
+        errors.push({ field: 'images', message: 'Images tab: Only one feedback method can be used at a time' });
+      }
+    }
+    
+    return errors;
+  }, [formData]);
+
+  // Helper function to get user-friendly error messages
+  const getErrorMessage = (error) => {
+    if (typeof error === 'string') {
+      return error;
+    }
+    
+    if (error.message) {
+      return error.message;
+    }
+    
+    if (error.detail) {
+      return error.detail;
+    }
+    
+    return 'An unexpected error occurred. Please try again.';
+  };
+
+  // Field-level validation state
+  const [fieldErrors, setFieldErrors] = useState({});
+  const [formErrors, setFormErrors] = useState([]);
+
+  // Clear field errors when user starts typing
+  const clearFieldError = (fieldName) => {
+    setFieldErrors(prev => {
+      const newErrors = { ...prev };
+      delete newErrors[fieldName];
+      return newErrors;
+    });
+  };
+
+  // Enhanced input change handler with validation
+  const handleInputChange = (e) => {
+    const { name, value } = e.target;
+    
+    // Clear field error when user starts typing
+    clearFieldError(name);
+    
+    setFormData(prev => ({
+      ...prev,
+      [name]: value
+    }));
+  };
+
+  // Validate specific field
+  const validateField = (fieldName, value) => {
+    const errors = {};
+    
+    switch (fieldName) {
+      case 'email':
+        if (!value?.trim()) {
+          errors[fieldName] = 'Email is required';
+        } else if (!/^[^\s@]+@[^\s@]+\.[^\s@]+$/.test(value)) {
+          errors[fieldName] = 'Please enter a valid email address';
+        }
+        break;
+      case 'n8n_execution_id':
+        if (!value?.trim()) {
+          errors[fieldName] = 'N8N Execution ID is required';
+        }
+        break;
+      default:
+        break;
+    }
+    
+    return errors;
+  };
+
+  // Handle field blur for validation
+  const handleFieldBlur = (e) => {
+    const { name, value } = e.target;
+    const fieldErrors = validateField(name, value);
+    
+    if (Object.keys(fieldErrors).length > 0) {
+      setFieldErrors(prev => ({ ...prev, ...fieldErrors }));
+    }
+  };
+
   // Update tab validation when form data changes
   useEffect(() => {
-    console.log('Tab validation effect triggered');
     const linkedinValid = validateTab('linkedin');
     const twitterValid = validateTab('twitter');
     const imagesValid = validateTab('images');
-    
-    console.log('Tab validation results:', { linkedin: linkedinValid, twitter: twitterValid, images: imagesValid });
     
     setTabValidation({
       linkedin: linkedinValid,
@@ -215,14 +386,6 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       images: imagesValid
     });
   }, [formData, validateTab]);
-
-  const handleInputChange = (e) => {
-    const { name, value } = e.target;
-    setFormData(prev => ({
-      ...prev,
-      [name]: value
-    }));
-  };
 
   const handleTabChange = useCallback((newTab) => {
     console.log('Tab change requested:', newTab, 'Current tab:', activeTab);
@@ -238,7 +401,29 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   }, [activeTab]);
 
   const canSubmit = () => {
-    // Always enable submit button
+    // Check if form has validation errors
+    if (formErrors.length > 0) {
+      return false;
+    }
+    
+    // Check if required fields are filled
+    if (!formData.n8n_execution_id?.trim() || !formData.email?.trim()) {
+      return false;
+    }
+    
+    // Check if at least one tab has valid content
+    const availableTabs = getAvailableTabs();
+    if (availableTabs.length === 0) {
+      return false;
+    }
+    
+    // Check if each available tab has exactly one field filled
+    for (const tab of availableTabs) {
+      if (!validateTab(tab)) {
+        return false;
+      }
+    }
+    
     return true;
   };
 
@@ -249,6 +434,25 @@ To all the healthcare providers out there: what's the biggest challenge AI could
 
   const handleSubmit = async (e) => {
     e.preventDefault();
+    
+    // Clear previous errors
+    setFormErrors([]);
+    setFieldErrors({});
+    
+    // Validate form before submission
+    const validationErrors = validateForm();
+    if (validationErrors.length > 0) {
+      setFormErrors(validationErrors);
+      
+      // Show first error in modal
+      setModal({
+        isOpen: true,
+        title: 'Validation Error',
+        message: validationErrors[0].message,
+        type: 'error'
+      });
+      return;
+    }
     
     setLoading(true);
 
@@ -344,7 +548,19 @@ To all the healthcare providers out there: what's the biggest challenge AI could
         });
         
         if (!response.ok) {
-          throw new Error(`HTTP error! status: ${response.status}`);
+          let errorMessage = `HTTP error! status: ${response.status}`;
+          try {
+            const errorData = await response.json();
+            if (errorData.detail) {
+              errorMessage = errorData.detail;
+            } else if (errorData.message) {
+              errorMessage = errorData.message;
+            }
+          } catch (e) {
+            // If we can't parse JSON, use the status text
+            errorMessage = response.statusText || errorMessage;
+          }
+          throw new Error(errorMessage);
         }
         
         data = await response.json();
@@ -406,7 +622,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       setModal({
         isOpen: true,
         title: 'Error',
-        message: error.message || 'Failed to submit feedback. Please try again.',
+        message: getErrorMessage(error),
         type: 'error'
       });
     } finally {
@@ -418,7 +634,19 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     try {
       const response = await fetch(`${API_BASE_URL}/api/feedback/${id}`);
       if (!response.ok) {
-        throw new Error(`HTTP error! status: ${response.status}`);
+        let errorMessage = `HTTP error! status: ${response.status}`;
+        try {
+          const errorData = await response.json();
+          if (errorData.detail) {
+            errorMessage = errorData.detail;
+          } else if (errorData.message) {
+            errorMessage = errorData.message;
+          }
+        } catch (e) {
+          // If we can't parse JSON, use the status text
+          errorMessage = response.statusText || errorMessage;
+        }
+        throw new Error(errorMessage);
       }
       const data = await response.json();
       setFormData(data);
@@ -430,7 +658,7 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       setModal({
         isOpen: true,
         title: 'Error',
-        message: error.message || 'Failed to load feedback. Please check the ID.',
+        message: getErrorMessage(error),
         type: 'error'
       });
     }
@@ -679,9 +907,14 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                     name="n8n_execution_id"
                     value={formData.n8n_execution_id}
                     readOnly
-                    className="w-full bg-[#E8EBF5] border border-[#D5D9E4] rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-[#5A67A5] cursor-not-allowed text-sm sm:text-base"
+                    className={`w-full bg-[#E8EBF5] border rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-[#5A67A5] cursor-not-allowed text-sm sm:text-base ${
+                      fieldErrors.n8n_execution_id ? 'border-red-300' : 'border-[#D5D9E4]'
+                    }`}
                     placeholder="Execution ID will be loaded automatically"
                   />
+                  {fieldErrors.n8n_execution_id && (
+                    <p className="mt-1 text-red-500 text-xs">{fieldErrors.n8n_execution_id}</p>
+                  )}
                 </div>
                 
                 <div>
@@ -693,12 +926,39 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                     name="email"
                     value={formData.email}
                     readOnly
-                    className="w-full bg-[#E8EBF5] border border-[#D5D9E4] rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-[#5A67A5] cursor-not-allowed text-sm sm:text-base"
+                    className={`w-full bg-[#E8EBF5] border rounded-xl px-3 sm:px-4 py-2 sm:py-3 text-[#5A67A5] cursor-not-allowed text-sm sm:text-base ${
+                      fieldErrors.email ? 'border-red-300' : 'border-[#D5D9E4]'
+                    }`}
                     placeholder="Email will be loaded automatically"
                   />
+                  {fieldErrors.email && (
+                    <p className="mt-1 text-red-500 text-xs">{fieldErrors.email}</p>
+                  )}
                 </div>
               </div>
             </div>
+
+            {/* Form Validation Errors */}
+            {formErrors.length > 0 && (
+              <div className="bg-red-50 border border-red-200 rounded-2xl p-4 sm:p-6">
+                <div className="flex items-center gap-3 mb-3">
+                  <div className="p-2 bg-red-100 rounded-xl">
+                    <svg className="w-5 h-5 text-red-600" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M18 10a8 8 0 11-16 0 8 8 0 0116 0zm-7-4a1 1 0 11-2 0 1 1 0 012 0zM9 9a1 1 0 000 2v3a1 1 0 001 1h1a1 1 0 100-2v-3a1 1 0 00-1-1H9z" clipRule="evenodd" />
+                    </svg>
+                  </div>
+                  <h3 className="text-lg font-medium text-red-800">Please fix the following issues:</h3>
+                </div>
+                <ul className="space-y-2">
+                  {formErrors.map((error, index) => (
+                    <li key={index} className="flex items-start gap-2 text-red-700">
+                      <span className="text-red-500 mt-1">•</span>
+                      <span>{error.message}</span>
+                    </li>
+                  ))}
+                </ul>
+              </div>
+            )}
 
             {/* Content Tabs */}
             <div className="bg-[#FFFFFF] border border-[#D5D9E4] rounded-2xl p-4 sm:p-6 lg:p-8 shadow-sm hover:shadow-md transition-all duration-300">
@@ -739,6 +999,8 @@ To all the healthcare providers out there: what's the biggest challenge AI could
                 activeTab={activeTab}
                 formData={formData}
                 handleInputChange={handleInputChange}
+                handleFieldBlur={handleFieldBlur}
+                fieldErrors={fieldErrors}
                 tabValidation={tabValidation}
                 isEditMode={isEditMode}
               />
@@ -746,6 +1008,26 @@ To all the healthcare providers out there: what's the biggest challenge AI could
 
             {/* Submit Button - Now handles both saving and webhook submission */}
             <div className="text-center">
+              {formErrors.length > 0 ? (
+                <div className="mb-4 p-3 bg-amber-50 border border-amber-200 rounded-xl text-amber-800 text-sm">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M8.257 3.099c.765-1.36 2.722-1.36 3.486 0l5.58 9.92c.75 1.334-.213 2.98-1.742 2.98H4.42c-1.53 0-2.493-1.646-1.743-2.98l5.58-9.92zM11 13a1 1 0 11-2 0 1 1 0 012 0zm-1-8a1 1 0 00-1 1v3a1 1 0 002 0V6a1 1 0 00-1-1z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">Please fix validation errors above before submitting</span>
+                  </div>
+                </div>
+              ) : canSubmit() && !loading ? (
+                <div className="mb-4 p-3 bg-green-50 border border-green-200 rounded-xl text-green-800 text-sm">
+                  <div className="flex items-center gap-2">
+                    <svg className="w-4 h-4" fill="currentColor" viewBox="0 0 20 20">
+                      <path fillRule="evenodd" d="M10 18a8 8 0 100-16 8 8 0 000 16zm3.707-9.293a1 1 0 00-1.414-1.414L9 10.586 7.707 9.293a1 1 0 00-1.414 1.414l2 2a1 1 0 001.414 0l4-4z" clipRule="evenodd" />
+                    </svg>
+                    <span className="font-medium">Form is ready to submit!</span>
+                  </div>
+                </div>
+              ) : null}
+              
               <button
                 type="submit"
                 disabled={loading || !canSubmit()}

@@ -222,6 +222,65 @@ class TestFeedbackSubmissionSchemas:
             if llm in ["Stable", "Pixabay", "GPT1"]:
                 assert feedback.image_chosen_llm == llm or feedback.image_chosen_llm is None
     
+    def test_mutual_exclusion_validation(self):
+        """Test that schemas enforce mutual exclusion between feedback methods"""
+        from pydantic import ValidationError
+        
+        # Test LinkedIn mutual exclusion
+        with pytest.raises(ValidationError):
+            FeedbackSubmissionCreate(
+                n8n_execution_id="exclusion-test",
+                email="test@example.com",
+                linkedin_feedback="Feedback text",
+                linkedin_chosen_llm="Grok",  # This should cause validation error
+                linkedin_custom_content=None
+            )
+        
+        # Test X/Twitter mutual exclusion
+        with pytest.raises(ValidationError):
+            FeedbackSubmissionCreate(
+                n8n_execution_id="exclusion-test",
+                email="test@example.com",
+                x_feedback="X feedback text",
+                x_chosen_llm="Gemini",  # This should cause validation error
+                x_custom_content=None
+            )
+        
+        # Test Image mutual exclusion
+        with pytest.raises(ValidationError):
+            FeedbackSubmissionCreate(
+                n8n_execution_id="exclusion-test",
+                email="test@example.com",
+                image_feedback="Image feedback text",
+                linkedin_image_llm="Stable",  # This should cause validation error
+                twitter_image_llm=None
+            )
+        
+        # Test valid single feedback method selections
+        # LinkedIn feedback only
+        feedback1 = FeedbackSubmissionCreate(
+            n8n_execution_id="valid-test-1",
+            email="test@example.com",
+            linkedin_feedback="Valid feedback",
+            linkedin_chosen_llm=None,
+            linkedin_custom_content=None
+        )
+        assert feedback1.linkedin_feedback == "Valid feedback"
+        assert feedback1.linkedin_chosen_llm is None
+        assert feedback1.linkedin_custom_content is None
+        
+        # LinkedIn LLM choice only
+        feedback2 = FeedbackSubmissionCreate(
+            n8n_execution_id="valid-test-2",
+            email="test@example.com",
+            linkedin_feedback=None,
+            linkedin_chosen_llm="Grok",
+            linkedin_custom_content=None
+        )
+        assert feedback2.linkedin_feedback is None
+        assert feedback2.linkedin_chosen_llm == "Grok"
+        assert feedback2.linkedin_custom_content is None
+    
     def test_url_validation(self):
         """Test that URL fields can handle various URL formats"""
         urls = [

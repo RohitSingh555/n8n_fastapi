@@ -21,6 +21,8 @@ const TabContent = ({
   activeTab, 
   formData, 
   handleInputChange, 
+  handleFieldBlur,
+  fieldErrors = {},
   tabValidation,
   isEditMode = false 
 }) => {
@@ -65,9 +67,9 @@ const TabContent = ({
 
   const renderLinkedInContent = () => {
     
-    const hasFeedback = formData.linkedin_feedback?.trim() !== '';
-    const hasLLM = formData.linkedin_chosen_llm?.trim() !== '';
-    const hasCustomContent = formData.linkedin_custom_content?.trim() !== '';
+    const hasFeedback = formData.linkedin_feedback && formData.linkedin_feedback.trim() !== '';
+    const hasLLM = formData.linkedin_chosen_llm && formData.linkedin_chosen_llm.trim() !== '';
+    const hasCustomContent = formData.linkedin_custom_content && formData.linkedin_custom_content.trim() !== '';
     
     
     const isFeedbackDisabled = hasLLM || hasCustomContent;
@@ -168,13 +170,13 @@ const TabContent = ({
                 type="button"
                 onClick={() => {
                   handleInputChange({
-                    target: { name: 'linkedin_feedback', value: '' }
+                    target: { name: 'linkedin_feedback', value: null }
                   });
                   handleInputChange({
-                    target: { name: 'linkedin_chosen_llm', value: '' }
+                    target: { name: 'linkedin_chosen_llm', value: null }
                   });
                   handleInputChange({
-                    target: { name: 'linkedin_custom_content', value: '' }
+                    target: { name: 'linkedin_custom_content', value: null }
                   });
                 }}
                 className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
@@ -195,17 +197,23 @@ const TabContent = ({
             </label>
             <textarea
               name="linkedin_feedback"
-              value={convertEscapeSequences(formData.linkedin_feedback)}
+              value={convertEscapeSequences(formData.linkedin_feedback || '')}
               onChange={handleInputChange}
+              onBlur={handleFieldBlur}
               disabled={isFeedbackDisabled}
               className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-48 sm:min-h-64 resize-none text-sm sm:text-base ${
                 isFeedbackDisabled
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : fieldErrors.linkedin_feedback
+                  ? 'bg-red-50 border-red-300 text-slate-800 placeholder-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300'
                   : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
               }`}
               placeholder={isFeedbackDisabled ? "Disabled - clear other fields to enable" : "Enter your feedback for LinkedIn content..."}
               required
             />
+            {fieldErrors.linkedin_feedback && (
+              <p className="mt-1 text-red-500 text-xs">{fieldErrors.linkedin_feedback}</p>
+            )}
           </div>
           
           <div>
@@ -230,16 +238,22 @@ const TabContent = ({
           </label>
           <textarea
             name="linkedin_custom_content"
-            value={convertEscapeSequences(formData.linkedin_custom_content)}
+            value={convertEscapeSequences(formData.linkedin_custom_content || '')}
             onChange={handleInputChange}
+            onBlur={handleFieldBlur}
             disabled={isCustomContentDisabled}
             className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-48 sm:min-h-64 resize-none text-sm sm:text-base ${
               isCustomContentDisabled
                 ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                : fieldErrors.linkedin_custom_content
+                ? 'bg-red-50 border-red-300 text-slate-800 placeholder-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300'
                 : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
             }`}
             placeholder={isCustomContentDisabled ? "Disabled - clear other fields to enable" : "Enter custom LinkedIn content..."}
           />
+          {fieldErrors.linkedin_custom_content && (
+            <p className="mt-1 text-red-500 text-xs">{fieldErrors.linkedin_custom_content}</p>
+          )}
         </div>
       </div>
     );
@@ -247,9 +261,9 @@ const TabContent = ({
 
   const renderTwitterContent = () => {
     
-    const hasFeedback = formData.x_feedback?.trim() !== '';
-    const hasLLM = formData.x_chosen_llm?.trim() !== '';
-    const hasCustomContent = formData.x_custom_content?.trim() !== '';
+    const hasFeedback = formData.x_feedback && formData.x_feedback.trim() !== '';
+    const hasLLM = formData.x_chosen_llm && formData.x_chosen_llm.trim() !== '';
+    const hasCustomContent = formData.x_custom_content && formData.x_custom_content.trim() !== '';
     
     
     const isFeedbackDisabled = hasLLM || hasCustomContent;
@@ -350,13 +364,13 @@ const TabContent = ({
                 type="button"
                 onClick={() => {
                   handleInputChange({
-                    target: { name: 'x_feedback', value: '' }
+                    target: { name: 'x_feedback', value: null }
                   });
                   handleInputChange({
-                    target: { name: 'x_chosen_llm', value: '' }
+                    target: { name: 'x_chosen_llm', value: null }
                   });
                   handleInputChange({
-                    target: { name: 'x_custom_content', value: '' }
+                    target: { name: 'x_custom_content', value: null }
                   });
                 }}
                 className="px-4 py-2 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-xl text-sm font-medium transition-all duration-200 shadow-sm hover:shadow-md transform hover:scale-105 active:scale-95"
@@ -377,17 +391,23 @@ const TabContent = ({
             </label>
             <textarea
               name="x_feedback"
-              value={convertEscapeSequences(formData.x_feedback)}
+              value={convertEscapeSequences(formData.x_feedback || '')}
               onChange={handleInputChange}
+              onBlur={handleFieldBlur}
               disabled={isFeedbackDisabled}
               className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
                 isFeedbackDisabled
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : fieldErrors.x_feedback
+                  ? 'bg-red-50 border-red-300 text-slate-800 placeholder-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300'
                   : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
               }`}
               placeholder={isFeedbackDisabled ? "Disabled - clear other fields to enable" : "Enter your feedback for X content..."}
               required
             />
+            {fieldErrors.x_feedback && (
+              <p className="mt-1 text-red-500 text-xs">{fieldErrors.x_feedback}</p>
+            )}
           </div>
           
           <div>
@@ -412,16 +432,22 @@ const TabContent = ({
           </label>
           <textarea
             name="x_custom_content"
-            value={convertEscapeSequences(formData.x_custom_content)}
+            value={convertEscapeSequences(formData.x_custom_content || '')}
             onChange={handleInputChange}
+            onBlur={handleFieldBlur}
             disabled={isCustomContentDisabled}
             className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
               isCustomContentDisabled
                 ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                : fieldErrors.x_custom_content
+                ? 'bg-red-50 border-red-300 text-slate-800 placeholder-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300'
                 : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
             }`}
             placeholder={isCustomContentDisabled ? "Disabled - clear other fields to enable" : "Enter custom X content..."}
           />
+          {fieldErrors.x_custom_content && (
+            <p className="mt-1 text-red-500 text-xs">{fieldErrors.x_custom_content}</p>
+          )}
         </div>
       </div>
     );
@@ -429,9 +455,9 @@ const TabContent = ({
 
   const renderImageContent = () => {
     
-    const hasFeedback = formData.image_feedback?.trim() !== '';
-    const hasLinkedInLLM = formData.linkedin_image_llm?.trim() !== '';
-    const hasTwitterLLM = formData.twitter_image_llm?.trim() !== '';
+    const hasFeedback = formData.image_feedback && formData.image_feedback.trim() !== '';
+    const hasLinkedInLLM = formData.linkedin_image_llm && formData.linkedin_image_llm.trim() !== '';
+    const hasTwitterLLM = formData.twitter_image_llm && formData.twitter_image_llm.trim() !== '';
     const hasLLM = hasLinkedInLLM || hasTwitterLLM;
     
     
@@ -548,13 +574,13 @@ const TabContent = ({
                 type="button"
                 onClick={() => {
                   handleInputChange({
-                    target: { name: 'image_feedback', value: '' }
+                    target: { name: 'image_feedback', value: null }
                   });
                   handleInputChange({
-                    target: { name: 'linkedin_image_llm', value: '' }
+                    target: { name: 'linkedin_image_llm', value: null }
                   });
                   handleInputChange({
-                    target: { name: 'twitter_image_llm', value: '' }
+                    target: { name: 'twitter_image_llm', value: null }
                   });
                 }}
                 className="px-3 py-1 bg-blue-100 hover:bg-blue-200 text-blue-700 rounded-lg text-xs font-medium transition-colors duration-200"
@@ -575,17 +601,23 @@ const TabContent = ({
             </label>
             <textarea
               name="image_feedback"
-              value={convertEscapeSequences(formData.image_feedback)}
+              value={convertEscapeSequences(formData.image_feedback || '')}
               onChange={handleInputChange}
+              onBlur={handleFieldBlur}
               disabled={isFeedbackDisabled}
               className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
                 isFeedbackDisabled
                   ? 'bg-slate-100 border-slate-200 text-slate-400 cursor-not-allowed'
+                  : fieldErrors.image_feedback
+                  ? 'bg-red-50 border-red-300 text-slate-800 placeholder-red-400 focus:outline-none focus:ring-2 focus:ring-red-300 focus:border-red-300'
                   : 'bg-slate-50 border-slate-200 text-slate-800 placeholder-slate-400 focus:outline-none focus:ring-2 focus:ring-slate-300 focus:border-slate-300'
               }`}
               placeholder={isFeedbackDisabled ? "Disabled - clear other fields to enable" : "Enter your feedback for images..."}
               required
             />
+            {fieldErrors.image_feedback && (
+              <p className="mt-1 text-red-500 text-xs">{fieldErrors.image_feedback}</p>
+            )}
           </div>
           
           <div className="space-y-6">

@@ -1,4 +1,4 @@
-from pydantic import BaseModel
+from pydantic import BaseModel, validator
 from typing import Optional
 from datetime import datetime
 
@@ -36,6 +36,45 @@ class FeedbackSubmissionBase(BaseModel):
     
     linkedin_image_llm: Optional[str] = None
     twitter_image_llm: Optional[str] = None
+
+    @validator('linkedin_feedback', 'linkedin_chosen_llm', 'linkedin_custom_content', pre=True, always=True)
+    def validate_linkedin_feedback_methods(cls, v, values):
+        """Ensure only one LinkedIn feedback method is selected"""
+        feedback_fields = [
+            values.get('linkedin_feedback'),
+            values.get('linkedin_chosen_llm'),
+            values.get('linkedin_custom_content')
+        ]
+        filled_fields = [field for field in feedback_fields if field and str(field).strip()]
+        if len(filled_fields) > 1:
+            raise ValueError('Only one LinkedIn feedback method can be selected at a time')
+        return v
+
+    @validator('x_feedback', 'x_chosen_llm', 'x_custom_content', pre=True, always=True)
+    def validate_x_feedback_methods(cls, v, values):
+        """Ensure only one X/Twitter feedback method is selected"""
+        feedback_fields = [
+            values.get('x_feedback'),
+            values.get('x_chosen_llm'),
+            values.get('x_custom_content')
+        ]
+        filled_fields = [field for field in feedback_fields if field and str(field).strip()]
+        if len(filled_fields) > 1:
+            raise ValueError('Only one X/Twitter feedback method can be selected at a time')
+        return v
+
+    @validator('image_feedback', 'linkedin_image_llm', 'twitter_image_llm', pre=True, always=True)
+    def validate_image_feedback_methods(cls, v, values):
+        """Ensure only one image feedback method is selected"""
+        feedback_fields = [
+            values.get('image_feedback'),
+            values.get('linkedin_image_llm'),
+            values.get('twitter_image_llm')
+        ]
+        filled_fields = [field for field in feedback_fields if field and str(field).strip()]
+        if len(filled_fields) > 1:
+            raise ValueError('Only one image feedback method can be selected at a time')
+        return v
 
 class FeedbackSubmissionCreate(FeedbackSubmissionBase):
     pass

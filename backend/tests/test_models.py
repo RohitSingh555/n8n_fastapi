@@ -7,7 +7,7 @@ import uuid
 from app.database import Base
 from app.models import FeedbackSubmission
 
-# Create in-memory SQLite database for testing
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -17,7 +17,7 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Create tables
+
 Base.metadata.create_all(bind=engine)
 
 class TestFeedbackSubmissionModel:
@@ -39,62 +39,62 @@ class TestFeedbackSubmissionModel:
             n8n_execution_id="test-execution-123",
             email="test@example.com",
             
-            # LinkedIn Content
+            
             linkedin_grok_content="What if AI could transform prenatal care into a lifeline for millions?",
             linkedin_o3_content="What if your next ultrasound could learn from millions of others?",
             linkedin_gemini_content="What if every clinician had a co-pilot in the exam room?",
             linkedin_feedback="Great content, very engaging!",
-            linkedin_chosen_llm="Grok",
-            linkedin_custom_content="Custom LinkedIn post content",
+            linkedin_chosen_llm=None,
+            linkedin_custom_content=None,
             
-            # X Content
+            
             x_grok_content="Sample X Grok content",
             x_o3_content="Sample X o3 content",
             x_gemini_content="Sample X Gemini content",
             x_feedback="X content needs improvement",
-            x_chosen_llm="Gemini",
-            x_custom_content="Custom X post content",
+            x_chosen_llm=None,
+            x_custom_content=None,
             
-            # Image URLs
+            
             stable_diffusion_image_url="https://example.com/stable-diffusion.jpg",
             pixabay_image_url="https://example.com/pixabay.jpg",
             gpt1_image_url="https://example.com/gpt1.jpg",
             image_feedback="Images look great!",
-            image_chosen_llm="Stable"
+            image_chosen_llm=None
         )
         
         self.db.add(feedback)
         self.db.commit()
         self.db.refresh(feedback)
         
-        # Check that submission_id is auto-generated
+        
         assert feedback.submission_id is not None
         assert isinstance(feedback.submission_id, str)
         
-        # Check all fields are stored correctly
+        
         assert feedback.n8n_execution_id == "test-execution-123"
         assert feedback.email == "test@example.com"
         assert feedback.linkedin_grok_content == "What if AI could transform prenatal care into a lifeline for millions?"
         assert feedback.linkedin_o3_content == "What if your next ultrasound could learn from millions of others?"
         assert feedback.linkedin_gemini_content == "What if every clinician had a co-pilot in the exam room?"
         assert feedback.linkedin_feedback == "Great content, very engaging!"
-        assert feedback.linkedin_chosen_llm == "Grok"
-        assert feedback.linkedin_custom_content == "Custom LinkedIn post content"
+        assert feedback.linkedin_chosen_llm is None
+        assert feedback.linkedin_custom_content is None
         assert feedback.x_grok_content == "Sample X Grok content"
         assert feedback.x_o3_content == "Sample X o3 content"
         assert feedback.x_gemini_content == "Sample X Gemini content"
         assert feedback.x_feedback == "X content needs improvement"
-        assert feedback.x_chosen_llm == "Gemini"
-        assert feedback.x_custom_content == "Custom X post content"
+        assert feedback.x_chosen_llm is None
+        assert feedback.x_custom_content is None
         assert feedback.stable_diffusion_image_url == "https://example.com/stable-diffusion.jpg"
         assert feedback.pixabay_image_url == "https://example.com/pixabay.jpg"
         assert feedback.gpt1_image_url == "https://example.com/gpt1.jpg"
         assert feedback.image_feedback == "Images look great!"
-        assert feedback.image_chosen_llm == "Stable"
+        assert feedback.image_chosen_llm is None
         
-        # Check timestamps are created
+        
         assert feedback.created_at is not None
-        assert feedback.updated_at is None  # Should be None initially
+        assert feedback.updated_at is None  
     
     def test_create_feedback_submission_minimal(self):
         """Test creating a feedback submission with only required fields"""
@@ -111,11 +111,15 @@ class TestFeedbackSubmissionModel:
         assert feedback.email == "minimal@example.com"
         assert feedback.submission_id is not None
         
-        # Optional fields should be None
-        assert feedback.linkedin_grok_content is None
+        
         assert feedback.linkedin_feedback is None
+        assert feedback.linkedin_chosen_llm is None
+        assert feedback.linkedin_custom_content is None
+        assert feedback.x_feedback is None
         assert feedback.x_chosen_llm is None
+        assert feedback.x_custom_content is None
         assert feedback.image_feedback is None
+        assert feedback.image_chosen_llm is None
     
     def test_submission_id_uniqueness(self):
         """Test that submission IDs are unique"""
@@ -126,7 +130,7 @@ class TestFeedbackSubmissionModel:
         self.db.add(feedback2)
         self.db.commit()
         
-        # Refresh to get auto-generated submission_ids
+        
         self.db.refresh(feedback1)
         self.db.refresh(feedback2)
         
@@ -152,9 +156,53 @@ class TestFeedbackSubmissionModel:
         assert feedback.x_chosen_llm == "o3"
         assert feedback.image_chosen_llm == "Pixabay"
     
+    def test_mutual_exclusion_validation(self):
+        """Test that only one feedback method can be selected at a time"""
+        # Test LinkedIn mutual exclusion
+        feedback1 = FeedbackSubmission(
+            n8n_execution_id="exclusion-test-1",
+            email="test1@example.com",
+            linkedin_feedback="Feedback text",
+            linkedin_chosen_llm="Grok",  # This should cause validation error
+            linkedin_custom_content=None
+        )
+        
+        self.db.add(feedback1)
+        with pytest.raises(Exception):  # Should raise validation error
+            self.db.commit()
+        self.db.rollback()
+        
+        # Test X/Twitter mutual exclusion
+        feedback2 = FeedbackSubmission(
+            n8n_execution_id="exclusion-test-2",
+            email="test2@example.com",
+            x_feedback="X feedback text",
+            x_chosen_llm="Gemini",  # This should cause validation error
+            x_custom_content=None
+        )
+        
+        self.db.add(feedback2)
+        with pytest.raises(Exception):  # Should raise validation error
+            self.db.commit()
+        self.db.rollback()
+        
+        # Test Image mutual exclusion
+        feedback3 = FeedbackSubmission(
+            n8n_execution_id="exclusion-test-3",
+            email="test3@example.com",
+            image_feedback="Image feedback text",
+            linkedin_image_llm="Stable",  # This should cause validation error
+            twitter_image_llm=None
+        )
+        
+        self.db.add(feedback3)
+        with pytest.raises(Exception):  # Should raise validation error
+            self.db.commit()
+        self.db.rollback()
+    
     def test_text_field_lengths(self):
         """Test that text fields can handle long content"""
-        long_content = "A" * 10000  # 10KB of text
+        long_content = "A" * 10000  
         
         feedback = FeedbackSubmission(
             n8n_execution_id="long-content-test",
@@ -194,15 +242,15 @@ class TestFeedbackSubmissionModel:
         """Test that n8n_execution_id and email are required"""
         feedback = FeedbackSubmission()
         
-        # This should fail because n8n_execution_id and email are required (NOT NULL)
+        
         self.db.add(feedback)
         
-        # Expect an IntegrityError when trying to commit without required fields
+        
         import pytest
         from sqlalchemy.exc import IntegrityError
         
         with pytest.raises(IntegrityError):
             self.db.commit()
         
-        # Rollback the failed transaction
+        
         self.db.rollback() 

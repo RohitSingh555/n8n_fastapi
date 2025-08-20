@@ -53,23 +53,23 @@ class TestFeedbackAPI:
             "linkedin_o3_content": "What if your next ultrasound could learn from millions of others?",
             "linkedin_gemini_content": "What if every clinician had a co-pilot in the exam room?",
             "linkedin_feedback": "Great content, very engaging!",
-            "linkedin_chosen_llm": "Grok",
-            "linkedin_custom_content": "Custom LinkedIn post content",
+            "linkedin_chosen_llm": None,
+            "linkedin_custom_content": None,
             
             
             "x_grok_content": "Sample X Grok content",
             "x_o3_content": "Sample X o3 content", 
             "x_gemini_content": "Sample X Gemini content",
             "x_feedback": "X content needs improvement",
-            "x_chosen_llm": "Gemini",
-            "x_custom_content": "Custom X post content",
+            "x_chosen_llm": None,
+            "x_custom_content": None,
             
             
             "stable_diffusion_image_url": "https://example.com/stable-diffusion.jpg",
             "pixabay_image_url": "https://example.com/pixabay.jpg",
             "gpt1_image_url": "https://example.com/gpt1.jpg",
             "image_feedback": "Images look great!",
-            "image_chosen_llm": "Stable"
+            "image_chosen_llm": None
         }
         
         response = client.post("/api/feedback", json=feedback_data)
@@ -513,3 +513,41 @@ class TestWebhookProxy:
         assert post_data["post_image_type"] == "Yes, AI Generated"
         assert post_data["image_url"] is None
         assert post_data["uploaded_image_url"] is None 
+
+    def test_create_feedback_submission_mutual_exclusion(self):
+        """Test that API prevents multiple feedback methods from being selected"""
+        # Test LinkedIn mutual exclusion
+        feedback_data_linkedin = {
+            "n8n_execution_id": "exclusion-test-linkedin",
+            "email": "test@example.com",
+            "linkedin_feedback": "Feedback text",
+            "linkedin_chosen_llm": "Grok",  # This should cause validation error
+            "linkedin_custom_content": None
+        }
+        
+        response = client.post("/api/feedback", json=feedback_data_linkedin)
+        assert response.status_code == 422  # Validation error
+        
+        # Test X/Twitter mutual exclusion
+        feedback_data_x = {
+            "n8n_execution_id": "exclusion-test-x",
+            "email": "test@example.com",
+            "x_feedback": "X feedback text",
+            "x_chosen_llm": "Gemini",  # This should cause validation error
+            "x_custom_content": None
+        }
+        
+        response = client.post("/api/feedback", json=feedback_data_x)
+        assert response.status_code == 422  # Validation error
+        
+        # Test Image mutual exclusion
+        feedback_data_image = {
+            "n8n_execution_id": "exclusion-test-image",
+            "email": "test@example.com",
+            "image_feedback": "Image feedback text",
+            "linkedin_image_llm": "Stable",  # This should cause validation error
+            "twitter_image_llm": None
+        }
+        
+        response = client.post("/api/feedback", json=feedback_data_image)
+        assert response.status_code == 422  # Validation error 
