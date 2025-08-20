@@ -22,15 +22,15 @@ def wait_for_database(database_url: str, max_retries: int = 10, retry_interval: 
     
     for attempt in range(max_retries):
         try:
-            # Create a temporary engine to test connection
+            
             temp_engine = create_engine(
                 database_url,
                 connect_args={"check_same_thread": False}
             )
             
-            # Test the connection
+            
             with temp_engine.connect() as conn:
-                # Try to execute a simple query
+                
                 result = conn.execute(text("SELECT 1"))
                 result.fetchone()
                 
@@ -64,7 +64,7 @@ def ensure_database_exists(database_url: str, max_retries: int = 3, retry_interv
     
     for attempt in range(max_retries):
         try:
-            # Test the connection
+            
             temp_engine = create_engine(
                 database_url,
                 connect_args={"check_same_thread": False}

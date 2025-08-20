@@ -50,12 +50,10 @@ function FeedbackForm() {
   const { submissionId: urlSubmissionId, activeTab: urlActiveTab } = useParams();
   const navigate = useNavigate();
   
-  // Initial prefilled state
   const initialFormData = {
     n8n_execution_id: '',
     email: '',
     
-    // LinkedIn Content
     linkedin_grok_content: `What if AI could transform prenatal care into a lifeline for millions?
 
 At Ultrasound AI, we're making that vision a reality. Our cutting-edge technology empowers healthcare providers with tools to predict and address critical maternal health challenges, ensuring better outcomes for women and families worldwide. By combining scientific expertise with compassionate innovation, we're breaking barriers to accessible care.
@@ -166,10 +164,6 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     }
   }, [urlSubmissionId, urlActiveTab]);
 
-  // Note: Removed auto-selection logic to allow users to manually choose their preferred LLM
-  // Users must now explicitly select one of the available options
-
-  // Update URL when tab or submissionId changes
   useEffect(() => {
     console.log('URL update effect triggered:', { submissionId, activeTab });
     if (submissionId) {

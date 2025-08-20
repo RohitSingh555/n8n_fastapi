@@ -14,10 +14,10 @@ from ..main import (
     handle_image_url_storage
 )
 
-# Configure logging
+
 logger = logging.getLogger(__name__)
 
-# Create router
+
 router = APIRouter(prefix="/api/social-media-posts", tags=["social-media"])
 
 @router.post("", response_model=schemas.SocialMediaPostResponse)
@@ -29,7 +29,7 @@ def create_social_media_post(
     try:
         logger.info(f"Creating social media post for creator: {post.content_creator}")
         
-        # Handle post_image_type field with the same logic
+        
         post_data = post.model_dump()
         logger.info(f"Received post data: {post_data}")
         
@@ -37,11 +37,11 @@ def create_social_media_post(
             post_data['post_image_type'] = determine_post_image_type(post_data['post_image_type'])
             logger.info(f"Determined post_image_type: {post_data['post_image_type']}")
             
-            # Handle image URL storage based on post_image_type
+            
             post_data = handle_image_url_storage(post_data, post_data['post_image_type'])
             logger.info(f"After image URL handling: image_url={post_data.get('image_url')}, uploaded_image_url={post_data.get('uploaded_image_url')}")
         
-        # Clean string values by stripping quotes before creating the model
+        
         for field, value in post_data.items():
             if isinstance(value, str):
                 from ..main import strip_quotes
@@ -186,7 +186,7 @@ def update_social_media_post(
     try:
         logger.info(f"Updating social media post with ID: {post_id}")
         
-        # Get existing post
+        
         db_post = db.query(models.SocialMediaPost).filter(
             models.SocialMediaPost.post_id == post_id
         ).first()
@@ -195,23 +195,23 @@ def update_social_media_post(
             logger.warning(f"Social media post not found with ID: {post_id}")
             raise HTTPException(status_code=404, detail="Social media post not found")
         
-        # Update only the fields that are provided
+        
         update_data = post_update.model_dump(exclude_unset=True)
         if update_data:
-            # Handle post_image_type field with the same logic as creation
+            
             if 'post_image_type' in update_data:
                 update_data['post_image_type'] = determine_post_image_type(update_data['post_image_type'])
                 
-                # Handle image URL storage based on post_image_type
+                
                 update_data = handle_image_url_storage(update_data, update_data['post_image_type'])
             
             update_data['updated_at'] = datetime.utcnow()
             
-            # Clean string values by stripping quotes before setting them
+            
             for field, value in update_data.items():
                 if isinstance(value, str):
-                    from ..main import strip_quotes
-                    update_data[field] = strip_quotes(value)
+                    from ..main import clean_string_content
+                    update_data[field] = clean_string_content(value)
             
             for field, value in update_data.items():
                 setattr(db_post, field, value)

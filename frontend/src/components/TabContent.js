@@ -1,17 +1,30 @@
 import React from 'react';
-import { FiLinkedin, FiTwitter, FiImage } from 'react-icons/fi';
+import { FiLinkedin, FiTwitter, FiMessageCircle, FiEdit3, FiTrash2, FiImage } from 'react-icons/fi';
 import ContentPreview from './ContentPreview';
 import ImagePreview from './ImagePreview';
 import RadioGroup from './RadioGroup';
+
+
+const convertEscapeSequences = (text) => {
+  if (!text || typeof text !== 'string') return text;
+  
+  return text
+    .replace(/\\n/g, '\n')      
+    .replace(/\\t/g, '\t')      
+    .replace(/\\r/g, '\r')      
+    .replace(/\\"/g, '"')       
+    .replace(/\\'/g, "'")       
+    .replace(/\\\\/g, '\\');    
+};
 
 const TabContent = ({ 
   activeTab, 
   formData, 
   handleInputChange, 
   tabValidation,
-  isEditMode = false // Add isEditMode prop
+  isEditMode = false 
 }) => {
-  // Check if tab has content
+  
   const hasLinkedInContent = () => {
     return formData.linkedin_grok_content?.trim() || 
            formData.linkedin_o3_content?.trim() || 
@@ -30,7 +43,7 @@ const TabContent = ({
            formData.gpt1_image_url?.trim();
   };
 
-  // Always render tabs so users can access all form fields
+  
 
   const linkedinOptions = [
     { value: 'Grok', label: 'Grok', description: 'AI-powered content generation' },
@@ -51,12 +64,12 @@ const TabContent = ({
   ];
 
   const renderLinkedInContent = () => {
-    // Check which fields are filled to determine which ones should be disabled
+    
     const hasFeedback = formData.linkedin_feedback?.trim() !== '';
     const hasLLM = formData.linkedin_chosen_llm?.trim() !== '';
     const hasCustomContent = formData.linkedin_custom_content?.trim() !== '';
     
-    // If any field is filled, disable the others
+    
     const isFeedbackDisabled = hasLLM || hasCustomContent;
     const isLLMDisabled = hasFeedback || hasCustomContent;
     const isCustomContentDisabled = hasFeedback || hasLLM;
@@ -182,7 +195,7 @@ const TabContent = ({
             </label>
             <textarea
               name="linkedin_feedback"
-              value={formData.linkedin_feedback}
+              value={convertEscapeSequences(formData.linkedin_feedback)}
               onChange={handleInputChange}
               disabled={isFeedbackDisabled}
               className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-48 sm:min-h-64 resize-none text-sm sm:text-base ${
@@ -217,7 +230,7 @@ const TabContent = ({
           </label>
           <textarea
             name="linkedin_custom_content"
-            value={formData.linkedin_custom_content}
+            value={convertEscapeSequences(formData.linkedin_custom_content)}
             onChange={handleInputChange}
             disabled={isCustomContentDisabled}
             className={`w-full border rounded-xl px-3 sm:px-4 py-2 sm:py-3 transition-all duration-200 min-h-48 sm:min-h-64 resize-none text-sm sm:text-base ${
@@ -233,12 +246,12 @@ const TabContent = ({
   };
 
   const renderTwitterContent = () => {
-    // Check which fields are filled to determine which ones should be disabled
+    
     const hasFeedback = formData.x_feedback?.trim() !== '';
     const hasLLM = formData.x_chosen_llm?.trim() !== '';
     const hasCustomContent = formData.x_custom_content?.trim() !== '';
     
-    // If any field is filled, disable the others
+    
     const isFeedbackDisabled = hasLLM || hasCustomContent;
     const isLLMDisabled = hasFeedback || hasCustomContent;
     const isCustomContentDisabled = hasFeedback || hasLLM;
@@ -364,7 +377,7 @@ const TabContent = ({
             </label>
             <textarea
               name="x_feedback"
-              value={formData.x_feedback}
+              value={convertEscapeSequences(formData.x_feedback)}
               onChange={handleInputChange}
               disabled={isFeedbackDisabled}
               className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
@@ -399,7 +412,7 @@ const TabContent = ({
           </label>
           <textarea
             name="x_custom_content"
-            value={formData.x_custom_content}
+            value={convertEscapeSequences(formData.x_custom_content)}
             onChange={handleInputChange}
             disabled={isCustomContentDisabled}
             className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${
@@ -415,13 +428,13 @@ const TabContent = ({
   };
 
   const renderImageContent = () => {
-    // Check which fields are filled to determine which ones should be disabled
+    
     const hasFeedback = formData.image_feedback?.trim() !== '';
     const hasLinkedInLLM = formData.linkedin_image_llm?.trim() !== '';
     const hasTwitterLLM = formData.twitter_image_llm?.trim() !== '';
     const hasLLM = hasLinkedInLLM || hasTwitterLLM;
     
-    // If any field is filled, disable the other
+    
     const isFeedbackDisabled = hasLLM;
     const isLLMDisabled = hasFeedback;
 
@@ -562,7 +575,7 @@ const TabContent = ({
             </label>
             <textarea
               name="image_feedback"
-              value={formData.image_feedback}
+              value={convertEscapeSequences(formData.image_feedback)}
               onChange={handleInputChange}
               disabled={isFeedbackDisabled}
               className={`w-full border rounded-xl px-4 py-3 transition-all duration-200 min-h-64 resize-none ${

@@ -65,7 +65,7 @@ class TestFeedbackSubmissionSchemas:
             "n8n_execution_id": "complete-execution-789",
             "email": "complete@example.com",
             
-            # LinkedIn Content
+            
             "linkedin_grok_content": "What if AI could transform prenatal care into a lifeline for millions?",
             "linkedin_o3_content": "What if your next ultrasound could learn from millions of others?",
             "linkedin_gemini_content": "What if every clinician had a co-pilot in the exam room?",
@@ -73,7 +73,7 @@ class TestFeedbackSubmissionSchemas:
             "linkedin_chosen_llm": "Grok",
             "linkedin_custom_content": "Custom LinkedIn post content",
             
-            # X Content
+            
             "x_grok_content": "Sample X Grok content",
             "x_o3_content": "Sample X o3 content",
             "x_gemini_content": "Sample X Gemini content",
@@ -81,7 +81,7 @@ class TestFeedbackSubmissionSchemas:
             "x_chosen_llm": "Gemini",
             "x_custom_content": "Custom X post content",
             
-            # Image URLs
+            
             "stable_diffusion_image_url": "https://example.com/stable-diffusion.jpg",
             "pixabay_image_url": "https://example.com/pixabay.jpg",
             "gpt1_image_url": "https://example.com/gpt1.jpg",
@@ -91,7 +91,7 @@ class TestFeedbackSubmissionSchemas:
         
         feedback = FeedbackSubmissionCreate(**data)
         
-        # Verify all fields are set correctly
+        
         assert feedback.n8n_execution_id == "complete-execution-789"
         assert feedback.email == "complete@example.com"
         assert feedback.linkedin_grok_content == "What if AI could transform prenatal care into a lifeline for millions?"
@@ -146,7 +146,7 @@ class TestFeedbackSubmissionSchemas:
             "n8n_execution_id": "complete-execution-456",
             "email": "complete@example.com",
             
-            # LinkedIn Content
+            
             "linkedin_grok_content": "What if AI could transform prenatal care into a lifeline for millions?",
             "linkedin_o3_content": "What if your next ultrasound could learn from millions of others?",
             "linkedin_gemini_content": "What if every clinician had a co-pilot in the exam room?",
@@ -154,7 +154,7 @@ class TestFeedbackSubmissionSchemas:
             "linkedin_chosen_llm": "Grok",
             "linkedin_custom_content": "Custom LinkedIn post content",
             
-            # X Content
+            
             "x_grok_content": "Sample X Grok content",
             "x_o3_content": "Sample X o3 content",
             "x_gemini_content": "Sample X Gemini content",
@@ -162,21 +162,21 @@ class TestFeedbackSubmissionSchemas:
             "x_chosen_llm": "Gemini",
             "x_custom_content": "Custom X post content",
             
-            # Image URLs
+            
             "stable_diffusion_image_url": "https://example.com/stable-diffusion.jpg",
             "pixabay_image_url": "https://example.com/pixabay.jpg",
             "gpt1_image_url": "https://example.com/gpt1.jpg",
             "image_feedback": "Images look great!",
             "image_chosen_llm": "Stable",
             
-            # Timestamps
+            
             "created_at": datetime.now(),
             "updated_at": None
         }
         
         feedback = FeedbackSubmissionResponse(**data)
         
-        # Verify all fields are set correctly
+        
         assert feedback.id == 1
         assert feedback.submission_id == "complete-submission-456"
         assert feedback.n8n_execution_id == "complete-execution-456"
@@ -249,7 +249,7 @@ class TestFeedbackSubmissionSchemas:
     
     def test_long_text_validation(self):
         """Test that text fields can handle long content"""
-        long_content = "A" * 10000  # 10KB of text
+        long_content = "A" * 10000  
         
         data = {
             "n8n_execution_id": "long-text-test",

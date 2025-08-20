@@ -11,10 +11,10 @@ from datetime import datetime
 
 from ..database import get_db
 
-# Configure logging
+
 logger = logging.getLogger(__name__)
 
-# Create router
+
 router = APIRouter(prefix="/api", tags=["utils"])
 
 @router.get("/")
@@ -31,10 +31,10 @@ def read_root():
 def health_check(db: Session = Depends(get_db)):
     """Health check endpoint"""
     try:
-        # Only log health checks at DEBUG level to reduce noise
+        
         logger.debug("Health check endpoint accessed")
         
-        # Test database connection
+        
         try:
             db.execute(text("SELECT 1"))
             db_status = "connected"
@@ -61,7 +61,7 @@ def migration_status():
         import subprocess
         import sys
         
-        # Get current migration status
+        
         result = subprocess.run([
             sys.executable, "-m", "alembic", "current"
         ], capture_output=True, text=True, cwd="/app")
@@ -70,7 +70,7 @@ def migration_status():
         if result.returncode == 0 and result.stdout.strip():
             current_migration = result.stdout.strip()
         
-        # Get migration history
+        
         history_result = subprocess.run([
             sys.executable, "-m", "alembic", "history", "--verbose"
         ], capture_output=True, text=True, cwd="/app")
@@ -82,7 +82,7 @@ def migration_status():
         return {
             "status": "success",
             "current_migration": current_migration,
-            "migration_history": migration_history[:10],  # Last 10 migrations
+            "migration_history": migration_history[:10],  
             "timestamp": datetime.utcnow().isoformat()
         }
     except Exception as e:
@@ -102,7 +102,7 @@ def run_migrations():
         import subprocess
         import sys
         
-        # Run alembic upgrade head
+        
         result = subprocess.run([
             sys.executable, "-m", "alembic", "upgrade", "head"
         ], capture_output=True, text=True, cwd="/app")
@@ -139,13 +139,13 @@ async def upload_image(file: UploadFile = File(...)):
     try:
         logger.info(f"Uploading image: {file.filename}")
         
-        # Read the file content
+        
         file_content = await file.read()
         
-        # Prepare form data for the external server
+        
         files = {"files": (file.filename, file_content, file.content_type)}
         
-        # Upload to external server
+        
         async with httpx.AsyncClient() as client:
             response = await client.post(
                 "http://165.227.123.243:8000/upload",
@@ -181,13 +181,13 @@ def test_escape_characters_endpoint(data: dict):
     try:
         logger.info("Testing escape character handling endpoint")
         
-        # Import the function from main since it's not in this module
+        
         from ..main import log_escape_characters, validate_and_log_json_content
         
-        # Log all escape characters found in the request
+        
         log_escape_characters(data, "TEST_ESCAPE_CHARACTERS")
         
-        # Process and validate each field
+        
         processed_data = {}
         for field_name, field_value in data.items():
             if isinstance(field_value, str) and field_value:
@@ -195,9 +195,9 @@ def test_escape_characters_endpoint(data: dict):
             else:
                 processed_data[field_name] = field_value
         
-        # Return both original and processed data for comparison
         
-        # Count fields with escape characters
+        
+        
         escape_chars = ['\\n', '\\t', '\\r', '\\b', '\\f', '\\"', '\\\\']
         fields_with_escapes = 0
         for v in processed_data.values():
@@ -226,11 +226,11 @@ async def test_json_parsing_endpoint(request: Request):
     try:
         logger.info("Testing JSON parsing endpoint")
         
-        # Get raw body
+        
         body = await request.body()
         body_str = body.decode('utf-8')
         
-        # Try to parse JSON
+        
         try:
             parsed_data = json.loads(body_str)
             return {
@@ -242,13 +242,13 @@ async def test_json_parsing_endpoint(request: Request):
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {str(e)}")
             
-            # Try to identify the problematic character
+            
             error_pos = e.pos
             context_start = max(0, error_pos - 50)
             context_end = min(len(body_str), error_pos + 50)
             context = body_str[context_start:context_end]
             
-            # Try to clean common issues
+            
             cleaned_str = body_str
             if "'" in body_str:
                 cleaned_str = body_str.replace("'", "\\'")
@@ -285,11 +285,11 @@ async def fix_json_endpoint(request: Request):
     try:
         logger.info("Fixing JSON endpoint accessed")
         
-        # Get raw body
+        
         body = await request.body()
         body_str = body.decode('utf-8')
         
-        # Try to parse JSON first
+        
         try:
             parsed_data = json.loads(body_str)
             return {
@@ -300,25 +300,25 @@ async def fix_json_endpoint(request: Request):
         except json.JSONDecodeError as e:
             logger.info(f"Attempting to fix JSON: {str(e)}")
             
-            # Fix common issues
+            
             fixed_str = body_str
             
-            # Replace unescaped apostrophes in string values
-            # This regex finds apostrophes that are inside quotes but not escaped
+            
+            
             import re
             
-            # Pattern to match string values and fix apostrophes
+            
             def fix_apostrophes(match):
                 content = match.group(1)
-                # Replace unescaped apostrophes with escaped ones
+                
                 fixed_content = content.replace("'", "\\'")
                 return f'"{fixed_content}"'
             
-            # Find all string values and fix them
+            
             string_pattern = r'"([^"]*)"'
             fixed_str = re.sub(string_pattern, fix_apostrophes, fixed_str)
             
-            # Try to parse the fixed JSON
+            
             try:
                 fixed_data = json.loads(fixed_str)
                 return {
@@ -349,24 +349,24 @@ async def debug_json_endpoint(request: Request):
     try:
         logger.info("Debug JSON endpoint accessed")
         
-        # Get raw body
+        
         body = await request.body()
         body_str = body.decode('utf-8')
         
-        # Show the raw body and identify issues
+        
         issues = []
         
-        # Check for newlines
+        
         newline_count = body_str.count('\n')
         if newline_count > 0:
             issues.append(f"Found {newline_count} newline characters")
         
-        # Check for unescaped apostrophes
+        
         apostrophe_count = body_str.count("'")
         if apostrophe_count > 0:
             issues.append(f"Found {apostrophe_count} apostrophe characters")
         
-        # Check for control characters
+        
         control_chars = []
         for i, char in enumerate(body_str):
             if ord(char) < 32 and char not in '\n\r\t':
@@ -375,7 +375,7 @@ async def debug_json_endpoint(request: Request):
         if control_chars:
             issues.append(f"Found control characters: {control_chars}")
         
-        # Try to show where the problem is
+        
         try:
             json.loads(body_str)
             return {
@@ -385,13 +385,13 @@ async def debug_json_endpoint(request: Request):
                 "status": "valid"
             }
         except json.JSONDecodeError as e:
-            # Show the problematic area
+            
             error_pos = e.pos
             context_start = max(0, error_pos - 100)
             context_end = min(len(body_str), error_pos + 100)
             context = body_str[context_start:context_end]
             
-            # Show the character at the error position
+            
             problem_char = body_str[error_pos] if error_pos < len(body_str) else "EOF"
             
             return {
@@ -416,10 +416,10 @@ def test_post_image_type_endpoint(data: dict):
     try:
         logger.info("Testing post_image_type logic endpoint")
         
-        # Import the functions from main since they're not in this module
+        
         from ..main import determine_post_image_type, handle_image_url_storage
         
-        # Test the determine_post_image_type function with various inputs
+        
         test_cases = [
             ("Image URL", "Yes, Image URL"),
             ("Upload Image", "Yes, Upload Image"),
@@ -442,7 +442,7 @@ def test_post_image_type_endpoint(data: dict):
                 "matches": expected
             })
         
-        # Test with the provided data if it contains post_image_type
+        
         if 'post_image_type' in data:
             provided_result = determine_post_image_type(data['post_image_type'])
             results.append({
@@ -452,7 +452,7 @@ def test_post_image_type_endpoint(data: dict):
                 "matches": True
             })
         
-        # Test the handle_image_url_storage function
+        
         image_url_tests = [
             ("Yes, Image URL", {"image_url": "https://example.com/image.jpg", "uploaded_image_url": "https://upload.com/img.jpg"}),
             ("Yes, Upload Image", {"image_url": "https://example.com/image.jpg", "uploaded_image_url": "https://upload.com/img.jpg"}),

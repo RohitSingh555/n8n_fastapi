@@ -16,13 +16,13 @@ from ..main import (
     validate_and_log_json_content, 
     determine_post_image_type,
     handle_image_url_storage,
-    strip_quotes
+    clean_string_content
 )
 
-# Configure logging
+
 logger = logging.getLogger(__name__)
 
-# Create router
+
 router = APIRouter(prefix="/api/feedback", tags=["feedback"])
 
 @router.post("", response_model=schemas.FeedbackSubmissionCreateResponse)
@@ -34,21 +34,21 @@ def create_feedback_submission(
     try:
         logger.info(f"Creating feedback submission for execution_id: {feedback.n8n_execution_id}")
         
-        # Log escape characters in the incoming data
+        
         feedback_data = feedback.model_dump()
         log_escape_characters(feedback_data, "CREATE_FEEDBACK")
         
-        # Helper function to clean form values
+        
         def clean_form_value(value):
             """Clean form values - convert 'string' to None, empty strings to None, and strip quotes"""
             if value is None or value == "" or value == "string":
                 return None
             if isinstance(value, str):
-                # Strip quotes from string values
-                value = strip_quotes(value)
+                
+                value = clean_string_content(value)
             return value
         
-        # Clean all form values before saving to database
+        
         for field_name, field_value in feedback_data.items():
             if isinstance(field_value, str):
                 feedback_data[field_name] = clean_form_value(field_value)
@@ -65,13 +65,13 @@ def create_feedback_submission(
         
         logger.info(f"Successfully created feedback submission with ID: {db_feedback.submission_id}")
         
-        # Create the response with the required format
+        
         feedback_form_link = f"http://104.131.8.230:3000/feedback/{db_feedback.submission_id}"
         
         return schemas.FeedbackSubmissionCreateResponse(
             status_code=201,
             submission_id=db_feedback.submission_id,
-            feedback_id=db_feedback.submission_id,  # Added feedback_id for webhook
+            feedback_id=db_feedback.submission_id,  
             feedback_form_link=feedback_form_link,
             message="Feedback submission was stored successfully! You can provide feedback using the link above."
         )
@@ -112,7 +112,7 @@ def get_all_feedback_submissions(
         feedback_submissions = db.query(models.FeedbackSubmission).offset(skip).limit(limit).all()
         
         logger.info(f"Successfully retrieved {len(feedback_submissions)} feedback submissions")
-        # Convert SQLAlchemy models to Pydantic models with explicit field handling
+        
         response_list = []
         for feedback in feedback_submissions:
             response_data = {}
@@ -147,7 +147,7 @@ def get_feedback_by_execution_id(execution_id: str, db: Session = Depends(get_db
         ).all()
         
         logger.info(f"Successfully retrieved {len(feedback_submissions)} feedback submissions for execution_id: {execution_id}")
-        # Convert SQLAlchemy models to Pydantic models with explicit field handling
+        
         response_list = []
         for feedback in feedback_submissions:
             response_data = {}
@@ -192,22 +192,22 @@ def get_feedback_by_submission_id(submission_id: str, request: Request, db: Sess
         
         logger.info(f"Successfully retrieved feedback submission with ID: {submission_id}")
         
-        # Also fetch the linked social media post to get image URLs
+        
         social_media_post = db.query(models.SocialMediaPost).filter(
             models.SocialMediaPost.feedback_submission_id == submission_id
         ).first()
         
-        # Convert SQLAlchemy model to Pydantic model with explicit field handling
+        
         response_data = {}
         for field in schemas.FeedbackSubmissionResponse.model_fields:
             try:
                 value = getattr(feedback, field, None)
                 response_data[field] = value if value is not None else None
             except AttributeError:
-                # If field doesn't exist on the model, set it to None
+                
                 response_data[field] = None
         
-        # Populate image URLs from the linked social media post if available
+        
         if social_media_post:
             logger.info(f"Found linked social media post with image_url: {social_media_post.image_url}")
             logger.info(f"Found linked social media post with uploaded_image_url: {social_media_post.uploaded_image_url}")
@@ -221,7 +221,7 @@ def get_feedback_by_submission_id(submission_id: str, request: Request, db: Sess
         logger.info(f"Returning response data for submission {submission_id}")
         logger.info(f"Image URLs in response: image_url={response_data.get('image_url')}, uploaded_image_url={response_data.get('uploaded_image_url')}")
         
-        # Return the Pydantic model directly - FastAPI will handle serialization
+        
         return schemas.FeedbackSubmissionResponse(**response_data)
         
     except HTTPException:
@@ -251,7 +251,7 @@ def update_feedback_submission(
         logger.info(f"Updating feedback submission with ID: {submission_id}")
         logger.info(f"Update data received: {feedback_update.model_dump()}")
         
-        # Get existing feedback submission
+        
         db_feedback = db.query(models.FeedbackSubmission).filter(
             models.FeedbackSubmission.submission_id == submission_id
         ).first()
@@ -262,41 +262,41 @@ def update_feedback_submission(
         
         logger.info(f"Found existing feedback: {db_feedback.submission_id}")
         
-        # Update only the fields that are provided
+        
         update_data = feedback_update.model_dump(exclude_unset=True)
         logger.info(f"Fields to update: {list(update_data.keys())}")
         
-        # Filter out any database-specific fields that shouldn't be updated
+        
         forbidden_fields = {'id', 'submission_id', 'created_at'}
         update_data = {k: v for k, v in update_data.items() if k not in forbidden_fields}
         logger.info(f"Filtered fields to update: {list(update_data.keys())}")
         
-        # Ensure email is not empty if it's being updated
+        
         if 'email' in update_data:
-            # Strip quotes and whitespace from email
-            email_value = strip_quotes(update_data['email']) if isinstance(update_data['email'], str) else update_data['email']
+            
+            email_value = clean_string_content(update_data['email']) if isinstance(update_data['email'], str) else update_data['email']
             if not email_value or email_value.strip() == '':
                 logger.warning("Email field is empty after cleaning, removing from update data")
                 del update_data['email']
             else:
-                # Update the email value with the cleaned version
+                
                 update_data['email'] = email_value
         
         if update_data:
-            # Log escape characters in the update data
+            
             log_escape_characters(update_data, "UPDATE_FEEDBACK")
             
-            # Helper function to clean form values
+            
             def clean_form_value(value):
                 """Clean form values - convert 'string' to None, empty strings to None, and strip quotes"""
                 if value is None or value == "" or value == "string":
                     return None
                 if isinstance(value, str):
-                    # Strip quotes from string values
-                    value = strip_quotes(value)
+                    
+                    value = clean_string_content(value)
                 return value
             
-            # Clean all form values before updating database
+            
             for field_name, field_value in update_data.items():
                 if isinstance(field_value, str):
                     update_data[field_name] = clean_form_value(field_value)
@@ -314,22 +314,22 @@ def update_feedback_submission(
             
             logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
             
-            # Also fetch the linked social media post to get image URLs for the response
+            
             social_media_post = db.query(models.SocialMediaPost).filter(
                 models.SocialMediaPost.feedback_submission_id == submission_id
             ).first()
             
-            # Convert SQLAlchemy model to Pydantic model with explicit field handling
+            
             response_data = {}
             for field in schemas.FeedbackSubmissionResponse.model_fields:
                 try:
                     value = getattr(db_feedback, field, None)
                     response_data[field] = value if value is not None else None
                 except AttributeError:
-                    # If field doesn't exist on the model, set it to None
+                    
                     response_data[field] = None
             
-            # Populate image URLs from the linked social media post if available
+            
             if social_media_post:
                 logger.info(f"Found linked social media post with image_url: {social_media_post.image_url}")
                 logger.info(f"Found linked social media post with uploaded_image_url: {social_media_post.uploaded_image_url}")
@@ -344,22 +344,22 @@ def update_feedback_submission(
         else:
             logger.info(f"No fields to update for submission ID: {submission_id}")
             
-            # Also fetch the linked social media post to get image URLs for the response
+            
             social_media_post = db.query(models.SocialMediaPost).filter(
                 models.SocialMediaPost.feedback_submission_id == submission_id
             ).first()
             
-            # Convert SQLAlchemy model to Pydantic model with explicit field handling
+            
             response_data = {}
             for field in schemas.FeedbackSubmissionResponse.model_fields:
                 try:
                     value = getattr(db_feedback, field, None)
                     response_data[field] = value if value is not None else None
                 except AttributeError:
-                    # If field doesn't exist on the model, set it to None
+                    
                     response_data[field] = None
             
-            # Populate image URLs from the linked social media post if available
+            
             if social_media_post:
                 logger.info(f"Found linked social media post with image_url: {social_media_post.image_url}")
                 logger.info(f"Found linked social media post with uploaded_image_url: {social_media_post.uploaded_image_url}")
@@ -393,7 +393,7 @@ def update_feedback_submission(
             logger.error(f"Traceback: {traceback.format_exc()}")
             db.rollback()
             
-            # Return more detailed error information
+            
             error_detail = f"Internal server error: {str(e)}"
             if "datetime" in str(e).lower():
                 error_detail = "Date/time format error. Please check the data being sent."
@@ -415,7 +415,7 @@ async def update_feedback_submission_raw(
     try:
         logger.info(f"Updating feedback submission with ID: {submission_id} using raw JSON")
         
-        # Get existing feedback submission
+        
         db_feedback = db.query(models.FeedbackSubmission).filter(
             models.FeedbackSubmission.submission_id == submission_id
         ).first()
@@ -424,43 +424,43 @@ async def update_feedback_submission_raw(
             logger.warning(f"Feedback submission not found with ID: {submission_id}")
             raise HTTPException(status_code=404, detail="Feedback submission not found")
         
-        # Parse raw JSON body
+        
         try:
             body = await request.body()
             raw_data = json.loads(body.decode('utf-8'))
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {str(e)}")
-            # Try to clean the JSON string manually
+            
             try:
                 body_str = body.decode('utf-8')
                 logger.info(f"Attempting to clean JSON string. Original length: {len(body_str)}")
                 
-                # More aggressive cleaning approach
+                
                 cleaned_str = body_str
                 
-                # Replace problematic apostrophes with escaped ones
+                
                 if "'" in cleaned_str:
                     cleaned_str = cleaned_str.replace("'", "\\'")
                     logger.info("Replaced unescaped apostrophes")
                 
-                # Handle newlines and other control characters in string values
-                # Simple approach: replace all newlines and control characters globally
+                
+                
                 cleaned_str = cleaned_str.replace('\n', '\\n')
                 cleaned_str = cleaned_str.replace('\r', '\\r')
                 cleaned_str = cleaned_str.replace('\t', '\\t')
                 
-                # Remove other control characters
+                
                 cleaned_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', cleaned_str)
                 
                 logger.info("Cleaned control characters from JSON string")
                 
-                # Try to parse the cleaned JSON
+                
                 raw_data = json.loads(cleaned_str)
                 logger.info("Successfully cleaned and parsed JSON after initial failure")
                 
             except Exception as clean_error:
                 logger.error(f"Failed to clean JSON: {str(clean_error)}")
-                # Provide more detailed error information
+                
                 body_str = body.decode('utf-8')
                 error_pos = e.pos
                 context_start = max(0, error_pos - 100)
@@ -478,12 +478,12 @@ async def update_feedback_submission_raw(
                     }
                 )
         
-        # Update only the fields that are provided
+        
         if raw_data:
-            # Log escape characters in the update data
+            
             log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
             
-            # Validate and log content with escape characters
+            
             for field_name, field_value in raw_data.items():
                 if isinstance(field_value, str) and field_value:
                     raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
@@ -492,19 +492,19 @@ async def update_feedback_submission_raw(
             
             for field, value in raw_data.items():
                 if hasattr(db_feedback, field):
-                    # Special handling for n8n_execution_id: only update if current value is empty/None
+                    
                     if field == 'n8n_execution_id':
                         current_value = getattr(db_feedback, field)
                         if current_value is None or current_value == '':
-                            # Strip quotes from the value before setting it
+                            
                             if isinstance(value, str):
-                                value = strip_quotes(value)
+                                value = clean_string_content(value)
                             logger.info(f"Updating n8n_execution_id from '{current_value}' to '{value}'")
                             setattr(db_feedback, field, value)
                         else:
                             logger.info(f"Skipping n8n_execution_id update - current value '{current_value}' is not empty")
                     else:
-                        # For all other fields, update normally
+                        
                         logger.info(f"Updating field '{field}' to '{value}'")
                         setattr(db_feedback, field, value)
         
@@ -512,7 +512,7 @@ async def update_feedback_submission_raw(
         db.refresh(db_feedback)
         
         logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
-        # Return the updated feedback submission object to match the response_model
+        
         return db_feedback
             
     except HTTPException:

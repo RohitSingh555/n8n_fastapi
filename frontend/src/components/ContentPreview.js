@@ -4,21 +4,37 @@ import { FiCopy, FiCheck } from 'react-icons/fi';
 const ContentPreview = ({ title, content, icon: Icon, isPrefilled = true }) => {
   const [copied, setCopied] = useState(false);
 
+  
+  const convertEscapeSequences = (text) => {
+    if (!text || typeof text !== 'string') return text;
+    
+    return text
+      .replace(/\\n/g, '\n')      
+      .replace(/\\t/g, '\t')      
+      .replace(/\\r/g, '\r')      
+      .replace(/\\"/g, '"')       
+      .replace(/\\'/g, "'")       
+      .replace(/\\\\/g, '\\');    
+  };
+
+  
+  const displayContent = convertEscapeSequences(content);
+
   const handleCopy = async (e) => {
-    // Prevent form submission
+    
     e.preventDefault();
     e.stopPropagation();
     
     try {
-      // Try modern clipboard API first
+      
       if (navigator.clipboard && window.isSecureContext) {
-        await navigator.clipboard.writeText(content);
+        await navigator.clipboard.writeText(displayContent);
         setCopied(true);
         setTimeout(() => setCopied(false), 2000);
       } else {
-        // Fallback for older browsers or non-secure contexts
+        
         const textArea = document.createElement('textarea');
-        textArea.value = content;
+        textArea.value = displayContent;
         textArea.style.position = 'fixed';
         textArea.style.left = '-999999px';
         textArea.style.top = '-999999px';
@@ -44,19 +60,19 @@ const ContentPreview = ({ title, content, icon: Icon, isPrefilled = true }) => {
   return (
     <div className="bg-white border border-slate-200 rounded-2xl shadow-sm hover:shadow-lg transition-all duration-300 relative group overflow-hidden">
       {/* Header */}
-      <div className="flex flex-col sm:flex-row sm:items-center justify-between gap-3 p-3 sm:p-4 lg:p-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white">
-        <div className="flex items-center gap-3 min-w-0">
+      <div className="flex items-center justify-between gap-3 p-3 sm:p-4 lg:p-3 border-b border-slate-100 bg-gradient-to-r from-slate-50 to-white min-w-0">
+        <div className="flex items-center gap-3 min-w-0 flex-1 overflow-hidden">
           <div className="p-1.5 bg-slate-100 rounded-xl shadow-sm flex-shrink-0">
             <Icon className="text-slate-600 text-base" />
           </div>
-          <h4 className="text-base font-semibold text-slate-800 truncate">{title}</h4>
+          <h4 className="text-base font-semibold text-slate-800 truncate min-w-0">{title}</h4>
         </div>
         
-        {/* Copy Button */}
+        {/* Copy Button - Always on the right side, never wraps */}
         <button
           type="button"
           onClick={handleCopy}
-          className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-sm hover:shadow-md border flex-shrink-0 ${
+          className={`flex items-center justify-center w-8 h-8 rounded-xl transition-all duration-300 transform hover:scale-110 active:scale-95 shadow-sm hover:shadow-md border flex-shrink-0 ml-2 ${
             copied
               ? 'bg-emerald-50 text-emerald-600 border-emerald-200 shadow-emerald-100'
               : 'bg-slate-50 text-slate-600 hover:bg-slate-100 border-slate-200 hover:border-slate-300 hover:shadow-slate-200'
@@ -81,13 +97,13 @@ const ContentPreview = ({ title, content, icon: Icon, isPrefilled = true }) => {
             {/* Content with fixed height and scroll */}
             <div className="h-80 sm:h-96 overflow-y-auto">
               <p className="text-slate-700 text-sm sm:text-base leading-relaxed whitespace-pre-wrap font-medium">
-                {content}
+                {displayContent}
               </p>
             </div>
             
             {/* Character count */}
             <div className="mt-2 text-xs text-slate-400 font-mono text-center">
-              {content.length} characters
+              {displayContent.length} characters
             </div>
           </div>
           

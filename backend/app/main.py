@@ -19,7 +19,7 @@ from .database_utils import wait_for_database, ensure_database_exists
 from sqlalchemy import text
 import re
 
-# Configure logging
+
 logging.basicConfig(level=logging.INFO)
 logger = logging.getLogger(__name__)
 
@@ -54,17 +54,17 @@ def validate_and_log_json_content(content: str, field_name: str) -> str:
     if not content:
         return content
     
-    # Clean the content by replacing problematic characters
+    
     cleaned_content = content
     if "'" in content:
-        # Replace unescaped apostrophes with escaped ones for JSON compatibility
+        
         cleaned_content = content.replace("'", "\\'")
         logger.info(f"Cleaned {field_name}: replaced unescaped apostrophes with escaped ones")
     
-    # Strip leading and trailing quotes
-    cleaned_content = strip_quotes(cleaned_content)
     
-    # Count escape sequences for logging
+    cleaned_content = clean_string_content(cleaned_content)
+    
+    
     escape_counts = {
         'newlines': cleaned_content.count('\\n'),
         'tabs': cleaned_content.count('\\t'),
@@ -88,14 +88,28 @@ def strip_quotes(content: str) -> str:
     if not content or not isinstance(content, str):
         return content
     
-    # Strip leading and trailing quotes (both single and double quotes)
+    
     stripped = content.strip('"\'')
     
-    # Log if quotes were stripped
+    
     if stripped != content:
         logger.info(f"Stripped quotes from string: '{content}' -> '{stripped}'")
     
     return stripped
+
+def clean_string_content(content: str) -> str:
+    """Clean string content by stripping quotes at the start and end only"""
+    if not content or not isinstance(content, str):
+        return content
+    
+    
+    cleaned = content.strip('"\'')
+    
+    
+    if cleaned != content:
+        logger.info(f"Stripped quotes from string: '{content}' -> '{cleaned}'")
+    
+    return cleaned
 
 
 def determine_post_image_type(post_image_radio: str) -> str:
@@ -134,7 +148,7 @@ def determine_post_image_type(post_image_radio: str) -> str:
         logger.info("Radio contains 'No image', setting to 'No Image Needed'")
         return "No Image Needed"
     else:
-        # If radio has a value but doesn't match expected patterns, use the original value
+        
         logger.info(f"Radio value '{post_image_radio}' doesn't match expected patterns, keeping original value")
         return post_image_radio
 
@@ -157,12 +171,12 @@ def handle_image_url_storage(post_data: dict, post_image_type: str) -> dict:
     logger.info(f"Handling image URL storage for post_image_type: '{post_image_type}'")
     
     if post_image_type == "Yes, Image URL":
-        # Store external image URL in image_url field, clear uploaded_image_url
+        
         if 'image_url' in post_data:
             post_data['uploaded_image_url'] = None
             logger.info("External image URL stored in image_url field, cleared uploaded_image_url")
         elif 'uploaded_image_url' in post_data:
-            # Move uploaded_image_url to image_url and clear uploaded_image_url
+            
             post_data['image_url'] = post_data['uploaded_image_url']
             post_data['uploaded_image_url'] = None
             logger.info("Moved uploaded_image_url to image_url field")
@@ -170,12 +184,12 @@ def handle_image_url_storage(post_data: dict, post_image_type: str) -> dict:
             logger.info("No image URL provided for external image type")
             
     elif post_image_type == "Yes, Upload Image":
-        # Store uploaded image URL in uploaded_image_url field, clear image_url
+        
         if 'uploaded_image_url' in post_data:
             post_data['image_url'] = None
             logger.info("Uploaded image URL stored in uploaded_image_url field, cleared image_url")
         elif 'image_url' in post_data:
-            # Move image_url to uploaded_image_url and clear image_url
+            
             post_data['uploaded_image_url'] = post_data['image_url']
             post_data['image_url'] = None
             logger.info("Moved image_url to uploaded_image_url field")
@@ -183,28 +197,28 @@ def handle_image_url_storage(post_data: dict, post_image_type: str) -> dict:
             logger.info("No image URL provided for upload image type")
             
     else:
-        # For AI Generated or No Image Needed, clear both fields
+        
         post_data['image_url'] = None
         post_data['uploaded_image_url'] = None
         logger.info(f"Cleared both image URL fields for post_image_type: '{post_image_type}'")
     
     return post_data
 
-# Wait for database to be ready and create tables
+
 def initialize_database():
     """Initialize database connection and create tables"""
-    # Wait for database to be ready
+    
     logger.info("Waiting for SQLite database to be ready...")
     if not wait_for_database(DATABASE_URL, max_retries=10, retry_interval=3):
         logger.error("Failed to connect to database. Exiting...")
         raise RuntimeError("Database connection failed")
     
-    # Ensure database exists
+    
     if not ensure_database_exists(DATABASE_URL, max_retries=5, retry_interval=5):
         logger.error("Failed to ensure database exists. Exiting...")
         raise RuntimeError("Database initialization failed")
     
-    # Create database tables with retry logic
+    
     max_table_retries = 3
     for attempt in range(max_table_retries):
         try:
@@ -221,13 +235,13 @@ def initialize_database():
                 logger.error(f"Failed to create database tables after {max_table_retries} attempts")
                 raise RuntimeError(f"Table creation failed: {str(e)}")
 
-# Initialize database with error recovery
+
 try:
     initialize_database()
 except RuntimeError as e:
     if "Table creation failed" in str(e):
         logger.warning("Table creation failed, attempting to recreate database...")
-        # Wait a bit more for SQLite to be fully ready
+        
         import time
         time.sleep(10)
         try:
@@ -241,7 +255,7 @@ except RuntimeError as e:
 
 app = FastAPI(title="n8n Execution Feedback API", version="1.0.0")
 
-# Configure CORS properly
+
 app.add_middleware(
     CORSMiddleware,
     allow_origins=[
@@ -251,8 +265,8 @@ app.add_middleware(
     ],
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],  # Allow all headers
-    expose_headers=["*"],  # Expose all headers
+    allow_headers=["*"],  
+    expose_headers=["*"],  
     max_age=3600,
 )
 
@@ -262,13 +276,13 @@ logger.info("CORS middleware configured with origins: %s", [
     "http://127.0.0.1:3000"
 ])
 
-# Additional CORS middleware to ensure headers are always added
+
 @app.middleware("http")
 async def add_cors_headers(request: Request, call_next):
     """Ensure CORS headers are always added to responses"""
     response = await call_next(request)
     
-    # Add CORS headers to all responses
+    
     origin = request.headers.get("origin")
     if origin and origin in [
         "http://localhost:3000",
@@ -287,15 +301,15 @@ async def add_cors_headers(request: Request, call_next):
     logger.info(f"Added CORS headers for origin: {origin}")
     return response
 
-# Background task to check database health
+
 async def check_database_health():
     """Periodically check database health and recreate if needed"""
     while True:
         try:
-            await asyncio.sleep(300)  # Check every 5 minutes
+            await asyncio.sleep(300)  
             logger.debug("Performing periodic database health check...")
             
-            # Test database connection
+            
             try:
                 with engine.connect() as conn:
                     conn.execute(text("SELECT 1"))
@@ -315,13 +329,13 @@ async def check_database_health():
                     
         except Exception as e:
             logger.error(f"Error in database health check task: {str(e)}")
-            await asyncio.sleep(60)  # Wait 1 minute before retrying
+            await asyncio.sleep(60)  
 
-# Start the background task
+
 @app.on_event("startup")
 async def startup_event():
     """Start background tasks on startup"""
-    # Ensure database is ready on startup
+    
     try:
         logger.info("Performing startup database check...")
         with engine.connect() as conn:
@@ -336,16 +350,16 @@ async def startup_event():
         except Exception as init_e:
             logger.error(f"Failed to reinitialize database on startup: {str(init_e)}")
     
-    # Start background health check task
+    
     asyncio.create_task(check_database_health())
     
-    # Run Alembic migrations on startup
+    
     try:
         logger.info("Running Alembic migrations on startup...")
         import subprocess
         import sys
         
-        # Run alembic upgrade head
+        
         result = subprocess.run([
             sys.executable, "-m", "alembic", "upgrade", "head"
         ], capture_output=True, text=True, cwd="/app")
@@ -364,18 +378,18 @@ async def startup_event():
         logger.error(f"❌ Failed to run Alembic migrations on startup: {str(e)}")
         logger.info("Server will continue without running migrations")
 
-# Get frontend URL from environment variable or use default
+
 FRONTEND_URL = os.getenv("FRONTEND_URL", "http://localhost:3000")
 logger.info(f"Frontend URL configured as: {FRONTEND_URL}")
 logger.info(f"Environment variables: FRONTEND_URL={os.getenv('FRONTEND_URL')}")
 
-# Import the API router
+
 from .api.router import api_router
 
-# Include the API router
+
 app.include_router(api_router)
 
-# Feedback-raw endpoint for handling raw JSON updates from n8n
+
 @app.put("/api/feedback-raw/{submission_id}")
 async def update_feedback_submission_raw(
     submission_id: str,
@@ -386,7 +400,7 @@ async def update_feedback_submission_raw(
     try:
         logger.info(f"Updating feedback submission with ID: {submission_id} using raw JSON")
         
-        # Get existing feedback submission
+        
         db_feedback = db.query(models.FeedbackSubmission).filter(
             models.FeedbackSubmission.submission_id == submission_id
         ).first()
@@ -395,43 +409,43 @@ async def update_feedback_submission_raw(
             logger.warning(f"Feedback submission not found with ID: {submission_id}")
             raise HTTPException(status_code=404, detail="Feedback submission not found")
         
-        # Parse raw JSON body
+        
         try:
             body = await request.body()
             raw_data = json.loads(body.decode('utf-8'))
         except json.JSONDecodeError as e:
             logger.error(f"JSON decode error: {str(e)}")
-            # Try to clean the JSON string manually
+            
             try:
                 body_str = body.decode('utf-8')
                 logger.info(f"Attempting to clean JSON string. Original length: {len(body_str)}")
                 
-                # More aggressive cleaning approach
+                
                 cleaned_str = body_str
                 
-                # Replace problematic apostrophes with escaped ones
+                
                 if "'" in cleaned_str:
                     cleaned_str = cleaned_str.replace("'", "\\'")
                     logger.info("Replaced unescaped apostrophes")
                 
-                # Handle newlines and other control characters in string values
-                # Simple approach: replace all newlines and control characters globally
+                
+                
                 cleaned_str = cleaned_str.replace('\n', '\\n')
                 cleaned_str = cleaned_str.replace('\r', '\\r')
                 cleaned_str = cleaned_str.replace('\t', '\\t')
                 
-                # Remove other control characters
+                
                 cleaned_str = re.sub(r'[\x00-\x1f\x7f-\x9f]', '', cleaned_str)
                 
                 logger.info("Cleaned control characters from JSON string")
                 
-                # Try to parse the cleaned JSON
+                
                 raw_data = json.loads(cleaned_str)
                 logger.info("Successfully cleaned and parsed JSON after initial failure")
                 
             except Exception as clean_error:
                 logger.error(f"Failed to clean JSON: {str(clean_error)}")
-                # Provide more detailed error information
+                
                 body_str = body.decode('utf-8')
                 error_pos = e.pos
                 context_start = max(0, error_pos - 100)
@@ -449,12 +463,12 @@ async def update_feedback_submission_raw(
                     }
                 )
         
-        # Update only the fields that are provided
+        
         if raw_data:
-            # Log escape characters in the update data
+            
             log_escape_characters(raw_data, "UPDATE_FEEDBACK_RAW")
             
-            # Validate and log content with escape characters
+            
             for field_name, field_value in raw_data.items():
                 if isinstance(field_value, str) and field_value:
                     raw_data[field_name] = validate_and_log_json_content(field_value, field_name)
@@ -463,7 +477,7 @@ async def update_feedback_submission_raw(
             
             for field, value in raw_data.items():
                 if hasattr(db_feedback, field):
-                    # Special handling for n8n_execution_id: only update if current value is empty/None
+                    
                     if field == 'n8n_execution_id':
                         current_value = getattr(db_feedback, field)
                         if current_value is None or current_value == '':
@@ -472,7 +486,7 @@ async def update_feedback_submission_raw(
                         else:
                             logger.info(f"Skipping n8n_execution_id update - current value '{current_value}' is not empty")
                     else:
-                        # For all other fields, update normally
+                        
                         logger.info(f"Updating field '{field}' to '{value}'")
                         setattr(db_feedback, field, value)
         
@@ -480,7 +494,7 @@ async def update_feedback_submission_raw(
         db.refresh(db_feedback)
         
         logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
-        # Return the updated feedback submission object to match the response_model
+        
         return db_feedback
             
     except HTTPException:
@@ -508,7 +522,7 @@ async def update_feedback_submission_raw(
             detail=f"Internal server error: {str(e)}"
         )
 
-# Custom middleware to handle JSON parsing errors
+
 @app.middleware("http")
 async def json_error_handler(request: Request, call_next):
     """Middleware to catch JSON parsing errors and provide better error messages"""
@@ -551,11 +565,11 @@ async def json_error_handler(request: Request, call_next):
             }
         )
 
-# All API endpoints have been moved to the new API modules:
-# - Feedback endpoints: backend/app/api/feedback.py
-# - Social Media endpoints: backend/app/api/social_media.py  
-# - Webhook endpoints: backend/app/api/webhooks.py
-# - Utility endpoints: backend/app/api/utils.py
+
+
+
+
+
 
 logger.info("API endpoints successfully organized into modular structure")
 logger.info(f"Using SQLite database: {DATABASE_URL}")

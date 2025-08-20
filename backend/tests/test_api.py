@@ -8,7 +8,7 @@ from app.main import app
 from app.database import get_db, Base
 from app.models import FeedbackSubmission
 
-# Create in-memory SQLite database for testing
+
 SQLALCHEMY_DATABASE_URL = "sqlite:///:memory:"
 
 engine = create_engine(
@@ -18,7 +18,7 @@ engine = create_engine(
 )
 TestingSessionLocal = sessionmaker(autocommit=False, autoflush=False, bind=engine)
 
-# Create tables
+
 Base.metadata.create_all(bind=engine)
 
 def override_get_db():
@@ -48,7 +48,7 @@ class TestFeedbackAPI:
             "n8n_execution_id": "test-execution-123",
             "email": "test@example.com",
             
-            # LinkedIn Content
+            
             "linkedin_grok_content": "What if AI could transform prenatal care into a lifeline for millions?",
             "linkedin_o3_content": "What if your next ultrasound could learn from millions of others?",
             "linkedin_gemini_content": "What if every clinician had a co-pilot in the exam room?",
@@ -56,7 +56,7 @@ class TestFeedbackAPI:
             "linkedin_chosen_llm": "Grok",
             "linkedin_custom_content": "Custom LinkedIn post content",
             
-            # X Content
+            
             "x_grok_content": "Sample X Grok content",
             "x_o3_content": "Sample X o3 content", 
             "x_gemini_content": "Sample X Gemini content",
@@ -64,7 +64,7 @@ class TestFeedbackAPI:
             "x_chosen_llm": "Gemini",
             "x_custom_content": "Custom X post content",
             
-            # Image URLs
+            
             "stable_diffusion_image_url": "https://example.com/stable-diffusion.jpg",
             "pixabay_image_url": "https://example.com/pixabay.jpg",
             "gpt1_image_url": "https://example.com/gpt1.jpg",
@@ -77,11 +77,11 @@ class TestFeedbackAPI:
         assert response.status_code == 200
         data = response.json()
         
-        # Check that submission_id is generated
+        
         assert "submission_id" in data
         assert data["submission_id"] is not None
         
-        # Check all fields are stored correctly
+        
         assert data["n8n_execution_id"] == "test-execution-123"
         assert data["email"] == "test@example.com"
         assert data["linkedin_grok_content"] == feedback_data["linkedin_grok_content"]
@@ -102,7 +102,7 @@ class TestFeedbackAPI:
         assert data["image_feedback"] == feedback_data["image_feedback"]
         assert data["image_chosen_llm"] == feedback_data["image_chosen_llm"]
         
-        # Check timestamps are created
+        
         assert "created_at" in data
         assert data["created_at"] is not None
     
@@ -122,7 +122,7 @@ class TestFeedbackAPI:
         assert data["email"] == "minimal@example.com"
         assert data["submission_id"] is not None
         
-        # Optional fields should be None
+        
         assert data["linkedin_grok_content"] is None
         assert data["x_feedback"] is None
         assert data["image_chosen_llm"] is None
@@ -135,11 +135,11 @@ class TestFeedbackAPI:
         
         response = client.post("/api/feedback", json=feedback_data)
         
-        assert response.status_code == 422  # Validation error
+        assert response.status_code == 422  
     
     def test_get_feedback_by_submission_id(self):
         """Test retrieving a feedback submission by submission ID"""
-        # First create a submission
+        
         feedback_data = {
             "n8n_execution_id": "get-test-789",
             "email": "get@example.com",
@@ -151,7 +151,7 @@ class TestFeedbackAPI:
         
         submission_id = create_response.json()["submission_id"]
         
-        # Now retrieve it
+        
         get_response = client.get(f"/api/feedback/{submission_id}")
         assert get_response.status_code == 200
         
@@ -167,7 +167,7 @@ class TestFeedbackAPI:
     
     def test_get_all_feedback_submissions(self):
         """Test retrieving all feedback submissions"""
-        # Create multiple submissions
+        
         feedback_data_1 = {
             "n8n_execution_id": "all-test-1",
             "email": "all1@example.com",
@@ -183,21 +183,21 @@ class TestFeedbackAPI:
         client.post("/api/feedback", json=feedback_data_1)
         client.post("/api/feedback", json=feedback_data_2)
         
-        # Get all submissions
+        
         response = client.get("/api/feedback")
         assert response.status_code == 200
         
         data = response.json()
         assert len(data) == 2
         
-        # Check that both submissions are returned
+        
         execution_ids = [item["n8n_execution_id"] for item in data]
         assert "all-test-1" in execution_ids
         assert "all-test-2" in execution_ids
     
     def test_get_feedback_by_execution_id(self):
         """Test retrieving feedback submissions by n8n execution ID"""
-        # Create submissions with same execution ID
+        
         feedback_data_1 = {
             "n8n_execution_id": "execution-123",
             "email": "exec1@example.com",
@@ -220,14 +220,14 @@ class TestFeedbackAPI:
         client.post("/api/feedback", json=feedback_data_2)
         client.post("/api/feedback", json=feedback_data_3)
         
-        # Get feedback for execution-123
+        
         response = client.get("/api/feedback/execution/execution-123")
         assert response.status_code == 200
         
         data = response.json()
         assert len(data) == 2
         
-        # Check that only submissions for execution-123 are returned
+        
         for item in data:
             assert item["n8n_execution_id"] == "execution-123"
     
@@ -264,12 +264,12 @@ class TestFeedbackAPI:
         data = response.json()
         submission_id = data["submission_id"]
         
-        # Verify the escape characters were stored correctly
+        
         assert "\n" in feedback_data["linkedin_feedback"]
         assert "\t" in feedback_data["x_feedback"]
         assert "\\n" in feedback_data["image_feedback"]
         
-        # Retrieve and verify the stored data
+        
         get_response = client.get(f"/api/feedback/{submission_id}")
         assert get_response.status_code == 200
         
@@ -278,13 +278,13 @@ class TestFeedbackAPI:
         assert retrieved_data["x_feedback"] == feedback_data["x_feedback"]
         assert retrieved_data["image_feedback"] == feedback_data["image_feedback"]
         
-        # Verify newlines and tabs are preserved
+        
         assert "\n" in retrieved_data["linkedin_feedback"]
         assert "\t" in retrieved_data["x_feedback"]
     
     def test_update_feedback_with_escape_characters(self):
         """Test updating feedback with escape characters"""
-        # First create a feedback submission
+        
         feedback_data = {
             "n8n_execution_id": "test-update-escape-123",
             "email": "test@example.com",
@@ -296,7 +296,7 @@ class TestFeedbackAPI:
         assert create_response.status_code == 200
         submission_id = create_response.json()["submission_id"]
         
-        # Update with escape characters
+        
         update_data = {
             "linkedin_feedback": "Updated feedback\nwith\nmultiple\nnewlines",
             "x_feedback": "Updated X feedback\twith\ttabs\tand\nnewlines",
@@ -311,7 +311,7 @@ class TestFeedbackAPI:
         assert updated_data["x_feedback"] == update_data["x_feedback"]
         assert updated_data["image_feedback"] == update_data["image_feedback"]
         
-        # Verify the escape characters are preserved
+        
         assert "\n" in updated_data["linkedin_feedback"]
         assert "\t" in updated_data["image_feedback"]
         assert "\"" in updated_data["image_feedback"]
@@ -322,9 +322,9 @@ class TestFeedbackAPI:
         user_data = {
             "n8n_execution_id": "test-user-ultrasound-123",
             "email": "Matthew@AutomationConsultingServices.org",
-            "linkedin_grok_content": "Ready to see the future of prenatal care?\n\nAt Ultrasound AI, we're thrilled to showcase how our cutting-edge artificial intelligence is transforming the way clinicians support expectant mothers. By harnessing the power of AI, we're enabling earlier predictions and more personalized care—because every pregnancy journey deserves the best start possible.\n\nOur mission is simple yet profound: to empower healthcare providers with innovative tools that improve outcomes for women and families worldwide. With a focus on accessibility and inclusivity, we're breaking down barriers to ensure that life-changing technology reaches everyone, no matter their location or circumstances.\n\nJoin us in revolutionizing maternal health. How do you envision AI shaping the future of healthcare? Share your thoughts below—we'd love to hear from you! #MaternalHealth #AIInnovation #PrenatalCare #UltrasoundAI #HealthcareTech",
-            "linkedin_o3_content": "What if every expectant parent, everywhere, had the same chance at a healthy start?\n\nAt Ultrasound AI, that question drives our work each day. By merging decades of medical expertise with state-of-the-art artificial intelligence, we help clinicians spot risks sooner and tailor care to each pregnancy—no matter the zip code or ability to pay. Our commitment to equitable, impactful, and inclusive innovation means healthier outcomes for women and families worldwide.\n\nImagine a future where personalized prenatal insights are just a scan away. We're building it—together. How do you see AI elevating maternal health in your community? Share below! #PrenatalCare #AIInnovation #WomensHealth #UltrasoundAI",
-            "linkedin_gemini_content": "Imagine a world where every pregnancy is supported by the power of AI.\n\nAt Ultrasound AI, we're turning that vision into reality. Our technology empowers healthcare providers with deeper insights, helping them deliver more personalized and proactive care to expectant mothers. We believe in the power of innovation to create better outcomes.\n\nOur work is driven by a simple, powerful goal: to advance women's health with accessible and impactful solutions. By designing our technology with diverse data, we ensure that every family, everywhere, can benefit from a healthier start.\n\nWhat's one way you've seen technology improve patient care? Let's celebrate the progress. #UltrasoundAI #AIinHealthcare #PrenatalCare #WomensHealth #HealthTech #Innovation",
+            "linkedin_grok_content": "Ready to see the future of prenatal care?\n\nAt Ultrasound AI, we're thrilled to showcase how our cutting-edge artificial intelligence is transforming the way clinicians support expectant mothers. By harnessing the power of AI, we're enabling earlier predictions and more personalized care—because every pregnancy journey deserves the best start possible.\n\nOur mission is simple yet profound: to empower healthcare providers with innovative tools that improve outcomes for women and families worldwide. With a focus on accessibility and inclusivity, we're breaking down barriers to ensure that life-changing technology reaches everyone, no matter their location or circumstances.\n\nJoin us in revolutionizing maternal health. How do you envision AI shaping the future of healthcare? Share your thoughts below—we'd love to hear from you! 
+            "linkedin_o3_content": "What if every expectant parent, everywhere, had the same chance at a healthy start?\n\nAt Ultrasound AI, that question drives our work each day. By merging decades of medical expertise with state-of-the-art artificial intelligence, we help clinicians spot risks sooner and tailor care to each pregnancy—no matter the zip code or ability to pay. Our commitment to equitable, impactful, and inclusive innovation means healthier outcomes for women and families worldwide.\n\nImagine a future where personalized prenatal insights are just a scan away. We're building it—together. How do you see AI elevating maternal health in your community? Share below! 
+            "linkedin_gemini_content": "Imagine a world where every pregnancy is supported by the power of AI.\n\nAt Ultrasound AI, we're turning that vision into reality. Our technology empowers healthcare providers with deeper insights, helping them deliver more personalized and proactive care to expectant mothers. We believe in the power of innovation to create better outcomes.\n\nOur work is driven by a simple, powerful goal: to advance women's health with accessible and impactful solutions. By designing our technology with diverse data, we ensure that every family, everywhere, can benefit from a healthier start.\n\nWhat's one way you've seen technology improve patient care? Let's celebrate the progress. 
             "linkedin_feedback": "",
             "linkedin_chosen_llm": "",
             "linkedin_custom_content": "",
@@ -341,7 +341,7 @@ class TestFeedbackAPI:
             "image_chosen_llm": "string"
         }
         
-        # Count newlines in content fields
+        
         content_fields = ['linkedin_grok_content', 'linkedin_o3_content', 'linkedin_gemini_content']
         total_newlines = sum(user_data[field].count('\n') for field in content_fields if user_data[field])
         
@@ -351,24 +351,24 @@ class TestFeedbackAPI:
         data = response.json()
         submission_id = data["submission_id"]
         
-        # Verify the submission was created successfully
+        
         assert "submission_id" in data
         assert data["email"] == "Matthew@AutomationConsultingServices.org"
         
-        # Retrieve and verify the stored data
+        
         get_response = client.get(f"/api/feedback/{submission_id}")
         assert get_response.status_code == 200
         
         retrieved_data = get_response.json()
         
-        # Verify newlines are preserved in content fields
+        
         for field in content_fields:
             if retrieved_data[field]:
                 newline_count = retrieved_data[field].count('\\n')
                 assert newline_count > 0, f"Field {field} should contain newlines"
                 assert retrieved_data[field] == user_data[field], f"Field {field} content not preserved correctly"
         
-        # Verify the total newline count matches
+        
         retrieved_newlines = sum(retrieved_data[field].count('\\n') for field in content_fields if retrieved_data[field])
         assert retrieved_newlines == total_newlines, "Total newline count should be preserved"
     
@@ -380,7 +380,7 @@ class TestFeedbackAPI:
             "text_with_tabs": "Column1\\tColumn2\\tColumn3",
             "text_with_quotes": "Text with \\\"quotes\\\" and 'apostrophes'",
             "text_with_backslashes": "Path: C:\\\\Users\\\\Username\\\\Documents",
-            "text_with_unicode": "Hello\\u0041\\u0042\\u0043",  # ABC
+            "text_with_unicode": "Hello\\u0041\\u0042\\u0043",  
             "text_with_mixed": "Mixed\\n\\t\\\"content\\nwith\\tescapes",
             "empty_string": "",
             "null_value": None
@@ -395,13 +395,13 @@ class TestFeedbackAPI:
         assert "processed_data" in result
         assert "escape_character_summary" in result
         
-        # Verify the summary
+        
         summary = result["escape_character_summary"]
         assert summary["total_fields"] == 9
-        assert summary["string_fields"] == 8  # null_value is not a string
+        assert summary["string_fields"] == 8  
         assert summary["fields_with_escapes"] > 0
         
-        # Verify processed data contains escape characters
+        
         processed = result["processed_data"]
         assert processed["text_with_newlines"] == test_data["text_with_newlines"]
         assert processed["text_with_tabs"] == test_data["text_with_tabs"]
@@ -440,7 +440,7 @@ class TestWebhookProxy:
         assert "feedback_submission_id" in data
         assert "social_media_post_id" in data
         
-        # Verify the social media post was created with correct image URL
+        
         post_id = data["social_media_post_id"]
         get_response = client.get(f"/api/social-media-posts/{post_id}")
         assert get_response.status_code == 200
@@ -472,7 +472,7 @@ class TestWebhookProxy:
         assert "feedback_submission_id" in data
         assert "social_media_post_id" in data
         
-        # Verify the social media post was created with correct uploaded image URL
+        
         post_id = data["social_media_post_id"]
         get_response = client.get(f"/api/social-media-posts/{post_id}")
         assert get_response.status_code == 200
@@ -504,7 +504,7 @@ class TestWebhookProxy:
         assert "feedback_submission_id" in data
         assert "social_media_post_id" in data
         
-        # Verify the social media post was created with no image URLs
+        
         post_id = data["social_media_post_id"]
         get_response = client.get(f"/api/social-media-posts/{post_id}")
         assert get_response.status_code == 200
