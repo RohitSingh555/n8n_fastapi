@@ -48,9 +48,13 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                 
                 # Helper function to clean webhook values
                 def clean_webhook_value(value):
-                    """Clean webhook values - convert 'string' to None, empty strings to None"""
+                    """Clean webhook values - convert 'string' to None, empty strings to None, and strip quotes"""
                     if value is None or value == "" or value == "string":
                         return None
+                    if isinstance(value, str):
+                        # Strip quotes from string values
+                        from ..main import strip_quotes
+                        value = strip_quotes(value)
                     return value
                 
                 # Create empty feedback submission
@@ -84,13 +88,13 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                 
                 if post_image_type == "Yes, Image URL":
                     # Store external image URL in image_url field
-                    image_url = image_url_value if image_url_value else None
+                    image_url = clean_webhook_value(image_url_value) if image_url_value else None
                     uploaded_image_url = None
                     logger.info(f"Storing external image URL: {image_url}")
                 elif post_image_type == "Yes, Upload Image":
                     # Store uploaded image URL in uploaded_image_url field
                     image_url = None
-                    uploaded_image_url = upload_image_value if upload_image_value else None
+                    uploaded_image_url = clean_webhook_value(upload_image_value) if upload_image_value else None
                     logger.info(f"Storing uploaded image URL: {uploaded_image_url}")
                 else:
                     # For AI Generated or No Image Needed, clear both fields
@@ -151,11 +155,15 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                 
                 # Helper function to preserve all fields but clean values
                 def clean_webhook_data(data_dict):
-                    """Clean webhook values but preserve all fields - convert 'string' to None, empty strings to empty strings"""
+                    """Clean webhook values but preserve all fields - convert 'string' to None, empty strings to empty strings, and strip quotes"""
                     cleaned = {}
                     for key, value in data_dict.items():
                         if value == "string":
                             cleaned[key] = None
+                        elif isinstance(value, str):
+                            # Strip quotes from string values
+                            from ..main import strip_quotes
+                            cleaned[key] = strip_quotes(value)
                         else:
                             cleaned[key] = value
                     return cleaned
@@ -247,9 +255,13 @@ async def submit_feedback_webhook(
         
         # Helper function to clean webhook values
         def clean_webhook_value(value):
-            """Clean webhook values - convert 'string' placeholder to None, but preserve actual null values"""
+            """Clean webhook values - convert 'string' placeholder to None, but preserve actual null values, and strip quotes"""
             if value == "string":  # Only convert placeholder 'string' to None
                 return None
+            if isinstance(value, str):
+                # Strip quotes from string values
+                from ..main import strip_quotes
+                value = strip_quotes(value)
             return value  # Return the value as-is (including None, empty strings, etc.)
         
         # Prepare the webhook payload with all data - always include every field

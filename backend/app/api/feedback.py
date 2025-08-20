@@ -15,7 +15,8 @@ from ..main import (
     log_escape_characters, 
     validate_and_log_json_content, 
     determine_post_image_type,
-    handle_image_url_storage
+    handle_image_url_storage,
+    strip_quotes
 )
 
 # Configure logging
@@ -39,9 +40,12 @@ def create_feedback_submission(
         
         # Helper function to clean form values
         def clean_form_value(value):
-            """Clean form values - convert 'string' to None, empty strings to None"""
+            """Clean form values - convert 'string' to None, empty strings to None, and strip quotes"""
             if value is None or value == "" or value == "string":
                 return None
+            if isinstance(value, str):
+                # Strip quotes from string values
+                value = strip_quotes(value)
             return value
         
         # Clean all form values before saving to database
@@ -268,9 +272,15 @@ def update_feedback_submission(
         logger.info(f"Filtered fields to update: {list(update_data.keys())}")
         
         # Ensure email is not empty if it's being updated
-        if 'email' in update_data and (not update_data['email'] or update_data['email'].strip() == ''):
-            logger.warning("Email field is empty, removing from update data")
-            del update_data['email']
+        if 'email' in update_data:
+            # Strip quotes and whitespace from email
+            email_value = strip_quotes(update_data['email']) if isinstance(update_data['email'], str) else update_data['email']
+            if not email_value or email_value.strip() == '':
+                logger.warning("Email field is empty after cleaning, removing from update data")
+                del update_data['email']
+            else:
+                # Update the email value with the cleaned version
+                update_data['email'] = email_value
         
         if update_data:
             # Log escape characters in the update data
@@ -278,9 +288,12 @@ def update_feedback_submission(
             
             # Helper function to clean form values
             def clean_form_value(value):
-                """Clean form values - convert 'string' to None, empty strings to None"""
+                """Clean form values - convert 'string' to None, empty strings to None, and strip quotes"""
                 if value is None or value == "" or value == "string":
                     return None
+                if isinstance(value, str):
+                    # Strip quotes from string values
+                    value = strip_quotes(value)
                 return value
             
             # Clean all form values before updating database
@@ -483,6 +496,9 @@ async def update_feedback_submission_raw(
                     if field == 'n8n_execution_id':
                         current_value = getattr(db_feedback, field)
                         if current_value is None or current_value == '':
+                            # Strip quotes from the value before setting it
+                            if isinstance(value, str):
+                                value = strip_quotes(value)
                             logger.info(f"Updating n8n_execution_id from '{current_value}' to '{value}'")
                             setattr(db_feedback, field, value)
                         else:

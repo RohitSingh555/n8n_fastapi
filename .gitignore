@@ -3,3 +3,6 @@ backend/alembic/versions/__pycache__/*
 backend/.env
 .env
 backend/app/n8n_feedback.db
+backend/app/api/__pycache__/*
+backend/alembic/__pycache__/*
+backend/alembic/__pycache__/env.cpython-312.pyc

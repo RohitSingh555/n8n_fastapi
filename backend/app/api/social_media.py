@@ -41,6 +41,12 @@ def create_social_media_post(
             post_data = handle_image_url_storage(post_data, post_data['post_image_type'])
             logger.info(f"After image URL handling: image_url={post_data.get('image_url')}, uploaded_image_url={post_data.get('uploaded_image_url')}")
         
+        # Clean string values by stripping quotes before creating the model
+        for field, value in post_data.items():
+            if isinstance(value, str):
+                from ..main import strip_quotes
+                post_data[field] = strip_quotes(value)
+        
         db_post = models.SocialMediaPost(
             post_id=str(uuid.uuid4()),
             **post_data
@@ -200,6 +206,12 @@ def update_social_media_post(
                 update_data = handle_image_url_storage(update_data, update_data['post_image_type'])
             
             update_data['updated_at'] = datetime.utcnow()
+            
+            # Clean string values by stripping quotes before setting them
+            for field, value in update_data.items():
+                if isinstance(value, str):
+                    from ..main import strip_quotes
+                    update_data[field] = strip_quotes(value)
             
             for field, value in update_data.items():
                 setattr(db_post, field, value)
