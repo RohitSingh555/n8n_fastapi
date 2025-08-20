@@ -407,3 +407,109 @@ class TestFeedbackAPI:
         assert processed["text_with_tabs"] == test_data["text_with_tabs"]
         assert processed["text_with_quotes"] == test_data["text_with_quotes"]
         assert processed["text_with_backslashes"] == test_data["text_with_backslashes"] 
+
+class TestWebhookProxy:
+    """Test cases for the webhook proxy endpoint"""
+    
+    def setup_method(self):
+        """Setup method to clear database before each test"""
+        db = TestingSessionLocal()
+        db.query(FeedbackSubmission).delete()
+        db.commit()
+        db.close()
+    
+    def test_webhook_proxy_with_image_url(self):
+        """Test webhook proxy with external image URL"""
+        webhook_data = [{
+            "Timestamp": "2024-01-01 12:00:00",
+            "Social Platforms": "linkedin",
+            "Custom Content?": "Test custom content",
+            "AI Prompted Text Generation": "Test AI prompt",
+            "Exclude LLMs": "Gemini, o3",
+            "Post Image?": "Yes, I have an image URL",
+            "Upload an Image": "",
+            "Image URL": "https://example.com/test-image.jpg",
+            "Content Creator": "test@example.com"
+        }]
+        
+        response = client.post("/api/webhook-proxy", json=webhook_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "feedback_form_link" in data
+        assert "feedback_submission_id" in data
+        assert "social_media_post_id" in data
+        
+        # Verify the social media post was created with correct image URL
+        post_id = data["social_media_post_id"]
+        get_response = client.get(f"/api/social-media-posts/{post_id}")
+        assert get_response.status_code == 200
+        
+        post_data = get_response.json()
+        assert post_data["post_image_type"] == "Yes, Image URL"
+        assert post_data["image_url"] == "https://example.com/test-image.jpg"
+        assert post_data["uploaded_image_url"] is None
+    
+    def test_webhook_proxy_with_uploaded_image(self):
+        """Test webhook proxy with uploaded image URL"""
+        webhook_data = [{
+            "Timestamp": "2024-01-01 12:00:00",
+            "Social Platforms": "twitter",
+            "Custom Content?": "Test custom content",
+            "AI Prompted Text Generation": "Test AI prompt",
+            "Exclude LLMs": "Grok",
+            "Post Image?": "Yes, I have an image upload",
+            "Upload an Image": "https://example.com/uploaded-image.jpg",
+            "Image URL": "",
+            "Content Creator": "test@example.com"
+        }]
+        
+        response = client.post("/api/webhook-proxy", json=webhook_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "feedback_form_link" in data
+        assert "feedback_submission_id" in data
+        assert "social_media_post_id" in data
+        
+        # Verify the social media post was created with correct uploaded image URL
+        post_id = data["social_media_post_id"]
+        get_response = client.get(f"/api/social-media-posts/{post_id}")
+        assert get_response.status_code == 200
+        
+        post_data = get_response.json()
+        assert post_data["post_image_type"] == "Yes, Upload Image"
+        assert post_data["uploaded_image_url"] == "https://example.com/uploaded-image.jpg"
+        assert post_data["image_url"] is None
+    
+    def test_webhook_proxy_with_ai_generated_image(self):
+        """Test webhook proxy with AI generated image option"""
+        webhook_data = [{
+            "Timestamp": "2024-01-01 12:00:00",
+            "Social Platforms": "linkedin",
+            "Custom Content?": "Test custom content",
+            "AI Prompted Text Generation": "Test AI prompt",
+            "Exclude LLMs": "",
+            "Post Image?": "Yes, AI generated image",
+            "Upload an Image": "",
+            "Image URL": "",
+            "Content Creator": "test@example.com"
+        }]
+        
+        response = client.post("/api/webhook-proxy", json=webhook_data)
+        assert response.status_code == 200
+        
+        data = response.json()
+        assert "feedback_form_link" in data
+        assert "feedback_submission_id" in data
+        assert "social_media_post_id" in data
+        
+        # Verify the social media post was created with no image URLs
+        post_id = data["social_media_post_id"]
+        get_response = client.get(f"/api/social-media-posts/{post_id}")
+        assert get_response.status_code == 200
+        
+        post_data = get_response.json()
+        assert post_data["post_image_type"] == "Yes, AI Generated"
+        assert post_data["image_url"] is None
+        assert post_data["uploaded_image_url"] is None 

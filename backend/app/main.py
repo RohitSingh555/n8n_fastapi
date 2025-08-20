@@ -85,9 +85,9 @@ def determine_post_image_type(post_image_radio: str) -> str:
     """Determine the standardized post_image_type value based on radio button selection
     
     This function ensures consistent post_image_type values across all endpoints:
-    - "Image URL" → "Yes, Image URL"
-    - "Upload Image" → "Yes, Upload Image"
-    - "AI Generated" → "Yes, AI Generated"
+    - "Yes, I have an image URL" → "Yes, Image URL"
+    - "Yes, I have an image upload" → "Yes, Upload Image"
+    - "Yes, AI generated image" → "Yes, AI Generated"
     - "No image" → "No Image Needed"
     - Empty/None → "No Image Needed"
     - Other values → Keep original value
@@ -104,14 +104,14 @@ def determine_post_image_type(post_image_radio: str) -> str:
         logger.info("No radio value provided, setting to 'No Image Needed'")
         return "No Image Needed"
     
-    if "Image URL" in post_image_radio:
-        logger.info("Radio contains 'Image URL', setting to 'Yes, Image URL'")
+    if "Yes, I have an image URL" in post_image_radio:
+        logger.info("Radio contains 'Yes, I have an image URL', setting to 'Yes, Image URL'")
         return "Yes, Image URL"
-    elif "Upload Image" in post_image_radio:
-        logger.info("Radio contains 'Upload Image', setting to 'Yes, Upload Image'")
+    elif "Yes, I have an image upload" in post_image_radio:
+        logger.info("Radio contains 'Yes, I have an image upload', setting to 'Yes, Upload Image'")
         return "Yes, Upload Image"
-    elif "AI Generated" in post_image_radio:
-        logger.info("Radio contains 'AI Generated', setting to 'Yes, AI Generated'")
+    elif "Yes, AI generated image" in post_image_radio:
+        logger.info("Radio contains 'Yes, AI generated image', setting to 'Yes, AI Generated'")
         return "Yes, AI Generated"
     elif "No image" in post_image_radio:
         logger.info("Radio contains 'No image', setting to 'No Image Needed'")
@@ -594,6 +594,12 @@ def get_feedback_by_submission_id(submission_id: str, request: Request, db: Sess
             raise HTTPException(status_code=404, detail="Feedback submission not found")
         
         logger.info(f"Successfully retrieved feedback submission with ID: {submission_id}")
+        
+        # Also fetch the linked social media post to get image URLs
+        social_media_post = db.query(models.SocialMediaPost).filter(
+            models.SocialMediaPost.feedback_submission_id == submission_id
+        ).first()
+        
         # Convert SQLAlchemy model to Pydantic model with explicit field handling
         response_data = {}
         for field in schemas.FeedbackSubmissionResponse.model_fields:
@@ -604,7 +610,19 @@ def get_feedback_by_submission_id(submission_id: str, request: Request, db: Sess
                 # If field doesn't exist on the model, set it to None
                 response_data[field] = None
         
+        # Populate image URLs from the linked social media post if available
+        if social_media_post:
+            logger.info(f"Found linked social media post with image_url: {social_media_post.image_url}")
+            logger.info(f"Found linked social media post with uploaded_image_url: {social_media_post.uploaded_image_url}")
+            response_data['image_url'] = social_media_post.image_url
+            response_data['uploaded_image_url'] = social_media_post.uploaded_image_url
+        else:
+            logger.warning(f"No linked social media post found for feedback submission {submission_id}")
+            response_data['image_url'] = None
+            response_data['uploaded_image_url'] = None
+        
         logger.info(f"Returning response data for submission {submission_id}")
+        logger.info(f"Image URLs in response: image_url={response_data.get('image_url')}, uploaded_image_url={response_data.get('uploaded_image_url')}")
         
         # Return the Pydantic model directly - FastAPI will handle serialization
         return schemas.FeedbackSubmissionResponse(**response_data)
@@ -689,6 +707,12 @@ def update_feedback_submission(
             db.refresh(db_feedback)
             
             logger.info(f"Successfully updated feedback submission with ID: {submission_id}")
+            
+            # Also fetch the linked social media post to get image URLs for the response
+            social_media_post = db.query(models.SocialMediaPost).filter(
+                models.SocialMediaPost.feedback_submission_id == submission_id
+            ).first()
+            
             # Convert SQLAlchemy model to Pydantic model with explicit field handling
             response_data = {}
             for field in schemas.FeedbackSubmissionResponse.model_fields:
@@ -698,9 +722,27 @@ def update_feedback_submission(
                 except AttributeError:
                     # If field doesn't exist on the model, set it to None
                     response_data[field] = None
+            
+            # Populate image URLs from the linked social media post if available
+            if social_media_post:
+                logger.info(f"Found linked social media post with image_url: {social_media_post.image_url}")
+                logger.info(f"Found linked social media post with uploaded_image_url: {social_media_post.uploaded_image_url}")
+                response_data['image_url'] = social_media_post.image_url
+                response_data['uploaded_image_url'] = social_media_post.uploaded_image_url
+            else:
+                logger.warning(f"No linked social media post found for feedback submission {submission_id}")
+                response_data['image_url'] = None
+                response_data['uploaded_image_url'] = None
+            
             return schemas.FeedbackSubmissionResponse(**response_data)
         else:
             logger.info(f"No fields to update for submission ID: {submission_id}")
+            
+            # Also fetch the linked social media post to get image URLs for the response
+            social_media_post = db.query(models.SocialMediaPost).filter(
+                models.SocialMediaPost.feedback_submission_id == submission_id
+            ).first()
+            
             # Convert SQLAlchemy model to Pydantic model with explicit field handling
             response_data = {}
             for field in schemas.FeedbackSubmissionResponse.model_fields:
@@ -710,6 +752,18 @@ def update_feedback_submission(
                 except AttributeError:
                     # If field doesn't exist on the model, set it to None
                     response_data[field] = None
+            
+            # Populate image URLs from the linked social media post if available
+            if social_media_post:
+                logger.info(f"Found linked social media post with image_url: {social_media_post.image_url}")
+                logger.info(f"Found linked social media post with uploaded_image_url: {social_media_post.uploaded_image_url}")
+                response_data['image_url'] = social_media_post.image_url
+                response_data['uploaded_image_url'] = social_media_post.uploaded_image_url
+            else:
+                logger.warning(f"No linked social media post found for feedback submission {submission_id}")
+                response_data['image_url'] = None
+                response_data['uploaded_image_url'] = None
+            
             return schemas.FeedbackSubmissionResponse(**response_data)
             
     except HTTPException:
@@ -1303,11 +1357,15 @@ def create_social_media_post(
         
         # Handle post_image_type field with the same logic
         post_data = post.model_dump()
+        logger.info(f"Received post data: {post_data}")
+        
         if 'post_image_type' in post_data:
             post_data['post_image_type'] = determine_post_image_type(post_data['post_image_type'])
+            logger.info(f"Determined post_image_type: {post_data['post_image_type']}")
             
             # Handle image URL storage based on post_image_type
             post_data = handle_image_url_storage(post_data, post_data['post_image_type'])
+            logger.info(f"After image URL handling: image_url={post_data.get('image_url')}, uploaded_image_url={post_data.get('uploaded_image_url')}")
         
         db_post = models.SocialMediaPost(
             post_id=str(uuid.uuid4()),
@@ -1644,23 +1702,35 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                 post_image_radio = webhook_data.get("Post Image?", "")
                 post_image_type = determine_post_image_type(post_image_radio)
                 
+                logger.info(f"Post image radio selection: '{post_image_radio}'")
+                logger.info(f"Determined post_image_type: '{post_image_type}'")
+                logger.info(f"Webhook data keys: {list(webhook_data.keys())}")
+                logger.info(f"Image URL field value: '{webhook_data.get('Image URL', '')}'")
+                logger.info(f"Upload an Image field value: '{webhook_data.get('Upload an Image', '')}'")
+                
                 # Handle image URL storage based on radio button selection
-                original_image_url = webhook_data.get("Image URL", "")
+                # Check both "Image URL" and "Upload an Image" fields
+                image_url_value = webhook_data.get("Image URL", "")
+                upload_image_value = webhook_data.get("Upload an Image", "")
+                
                 image_url = None
                 uploaded_image_url = None
                 
                 if post_image_type == "Yes, Image URL":
                     # Store external image URL in image_url field
-                    image_url = original_image_url
+                    image_url = image_url_value if image_url_value else None
                     uploaded_image_url = None
+                    logger.info(f"Storing external image URL: {image_url}")
                 elif post_image_type == "Yes, Upload Image":
                     # Store uploaded image URL in uploaded_image_url field
                     image_url = None
-                    uploaded_image_url = original_image_url
+                    uploaded_image_url = upload_image_value if upload_image_value else None
+                    logger.info(f"Storing uploaded image URL: {uploaded_image_url}")
                 else:
                     # For AI Generated or No Image Needed, clear both fields
                     image_url = None
                     uploaded_image_url = None
+                    logger.info(f"No image needed, cleared both URL fields")
                 
                 social_media_post = models.SocialMediaPost(
                     post_id=str(uuid.uuid4()),
@@ -1689,6 +1759,8 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                 
                 logger.info(f"Created empty feedback entry with ID: {feedback_submission.submission_id}")
                 logger.info(f"Created social media post entry with ID: {social_media_post.post_id}")
+                logger.info(f"Social media post image_url: {social_media_post.image_url}")
+                logger.info(f"Social media post uploaded_image_url: {social_media_post.uploaded_image_url}")
                 logger.info(f"Feedback form link: {feedback_form_link}")
                 
                 # Add the feedback URL and ID to the webhook data
@@ -1699,6 +1771,13 @@ async def proxy_webhook(request: Request, data: list = Body(...), db: Session = 
                 # Add the new image LLM fields to the webhook data
                 webhook_data["LinkedIn Image LLM"] = social_media_post.linkedin_image_llm
                 webhook_data["Twitter Image LLM"] = social_media_post.twitter_image_llm
+                
+                # Add the image URLs to the webhook data
+                webhook_data["Image URL"] = social_media_post.image_url
+                webhook_data["Upload an Image"] = social_media_post.uploaded_image_url
+                
+                logger.info(f"Added to webhook data - Image URL: {webhook_data['Image URL']}")
+                logger.info(f"Added to webhook data - Upload an Image: {webhook_data['Upload an Image']}")
                 
                 # Clean all webhook data values before sending
                 for key in webhook_data:
@@ -1792,6 +1871,15 @@ async def submit_feedback_webhook(
             models.SocialMediaPost.feedback_submission_id == feedback_submission.submission_id
         ).first()
         
+        # Log whether we found the social media post and its data
+        if social_media_post:
+            logger.info(f"Found social media post with ID: {social_media_post.post_id}")
+            logger.info(f"Social media post image_url: {social_media_post.image_url}")
+            logger.info(f"Social media post uploaded_image_url: {social_media_post.uploaded_image_url}")
+        else:
+            logger.warning(f"No social media post found for feedback submission ID: {feedback_submission.submission_id}")
+            logger.warning("This means the image URLs will be null in the webhook")
+        
         # Helper function to clean webhook values
         def clean_webhook_value(value):
             """Clean webhook values - convert 'string' placeholder to None, but preserve actual null values"""
@@ -1842,9 +1930,9 @@ async def submit_feedback_webhook(
             "image_feedback": clean_webhook_value(feedback_submission.image_feedback),
             "image_chosen_llm": clean_webhook_value(feedback_submission.image_chosen_llm),
             
-            # Additional Image Fields from Feedback Submission
-            "feedback_image_url": clean_webhook_value(feedback_submission.image_url),
-            "feedback_uploaded_image_url": clean_webhook_value(feedback_submission.uploaded_image_url),
+            # Additional Image Fields from Social Media Post (these are the actual image URLs)
+            "feedback_image_url": clean_webhook_value(social_media_post.image_url if social_media_post else None),
+            "feedback_uploaded_image_url": clean_webhook_value(social_media_post.uploaded_image_url if social_media_post else None),
             
             # Separate Image LLM selections for platforms
             "linkedin_image_llm": clean_webhook_value(feedback_submission.linkedin_image_llm),
@@ -1861,6 +1949,16 @@ async def submit_feedback_webhook(
         # This ensures they appear in n8n for users to fill out
         webhook_payload["LinkedIn Image LLM"] = feedback_submission.linkedin_image_llm or ""
         webhook_payload["Twitter Image LLM"] = feedback_submission.twitter_image_llm or ""
+        
+        # Log the image URL values being sent to the webhook for debugging
+        logger.info(f"Webhook payload image_url: {webhook_payload.get('image_url')}")
+        logger.info(f"Webhook payload uploaded_image_url: {webhook_payload.get('uploaded_image_url')}")
+        logger.info(f"Webhook payload feedback_image_url: {webhook_payload.get('feedback_image_url')}")
+        logger.info(f"Webhook payload feedback_uploaded_image_url: {webhook_payload.get('feedback_uploaded_image_url')}")
+        logger.info(f"Social media post image_url: {social_media_post.image_url if social_media_post else None}")
+        logger.info(f"Social media post uploaded_image_url: {social_media_post.uploaded_image_url if social_media_post else None}")
+        logger.info(f"Feedback submission image_url: {feedback_submission.image_url}")
+        logger.info(f"Feedback submission uploaded_image_url: {feedback_submission.uploaded_image_url}")
         
         # Submit to the specified webhook URL
         webhook_url = "https://ultrasoundai.app.n8n.cloud/webhook/3f455a01-2e10-4605-9a9c-d2e6da548bb5"
