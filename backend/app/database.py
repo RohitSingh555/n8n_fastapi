@@ -11,7 +11,7 @@ logger = logging.getLogger(__name__)
 load_dotenv()
 
 # Database URL - using SQLite
-DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/n8n_feedback.db")
+DATABASE_URL = os.getenv("DATABASE_URL", "sqlite:///app/n8n_database.sqlite")
 logger.info(f"Using database URL: {DATABASE_URL}")
 
 # Create engine with SQLite configuration
