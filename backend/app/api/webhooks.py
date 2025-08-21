@@ -15,7 +15,7 @@ from ..main import determine_post_image_type
 logger = logging.getLogger(__name__)
 
 
-router = APIRouter(prefix="/api", tags=["webhooks"])
+router = APIRouter(tags=["webhooks"])
 
 @router.options("/webhook-proxy")
 async def webhook_proxy_options():

@@ -1,12 +1,12 @@
 import React, { useState, useEffect, useRef } from 'react';
 import { useNavigate } from 'react-router-dom';
-import { FiUser, FiGlobe, FiEdit3, FiImage, FiX, FiSend } from 'react-icons/fi';
+import { FiUser, FiGlobe, FiEdit3, FiImage, FiX, FiSend, FiLogOut } from 'react-icons/fi';
 
 // Import logo
 import logo from '../assets/logo.png';
 import API_BASE_URL from '../config';
 
-function SocialMediaForm() {
+function SocialMediaForm({ currentUser, onLogout }) {
   const navigate = useNavigate();
   const dropdownRef = useRef(null);
   
@@ -364,6 +364,32 @@ function SocialMediaForm() {
 
   return (
     <div className="min-h-screen bg-gradient-to-br from-[#E8EBF5] to-[#A8B3D4] py-8 px-4 sm:px-6 lg:px-8">
+      {/* User Header */}
+      {currentUser && onLogout && (
+        <div className="max-w-7xl mx-auto mb-6">
+          <div className="bg-[#FFFFFF] border border-[#D5D9E4] rounded-xl p-4 shadow-sm">
+            <div className="flex justify-between items-center">
+              <div className="flex items-center space-x-3">
+                <div className="w-10 h-10 bg-[#5A67A5] rounded-full flex items-center justify-center">
+                  <FiUser className="w-5 h-5 text-white" />
+                </div>
+                <div>
+                  <p className="text-[#3E3E3E] font-medium">{currentUser.name}</p>
+                  <p className="text-[#5A67A5] text-sm">{currentUser.email}</p>
+                </div>
+              </div>
+              <button
+                onClick={onLogout}
+                className="flex items-center space-x-2 px-4 py-2 bg-[#5A67A5] text-white rounded-lg hover:bg-[#4A5A95] transition-colors"
+              >
+                <FiLogOut className="w-4 h-4" />
+                <span>Logout</span>
+              </button>
+            </div>
+          </div>
+        </div>
+      )}
+      
       {/* Success Message */}
       {showSuccess && (
         <div className="fixed top-4 right-4 bg-green-500 text-white px-6 py-4 rounded-lg shadow-lg z-50 max-w-md animate-fade-in">
@@ -467,20 +493,6 @@ function SocialMediaForm() {
           <p className="text-[#5A67A5] text-sm sm:text-base lg:text-lg max-w-4xl mx-auto px-4 animate-fade-in-delay">
             Create and schedule your social media posts with AI-powered content generation
           </p>
-          <div className="flex justify-center gap-4 mt-6">
-            <button 
-              onClick={() => navigate('/')}
-              className="px-4 py-2 bg-[#A8B3D4] text-[#3E3E3E] rounded-xl hover:bg-[#9BA6C7] transition-all duration-200 text-sm"
-            >
-              Feedback Form
-            </button>
-            <button 
-              onClick={() => navigate('/social-media')}
-              className="px-4 py-2 bg-[#5A67A5] text-white rounded-xl hover:bg-[#4A5A95] transition-all duration-200 text-sm shadow-md"
-            >
-              Social Media Form
-            </button>
-          </div>
         </header>
 
         <form onSubmit={handleSubmit} className="space-y-6 sm:space-y-8">

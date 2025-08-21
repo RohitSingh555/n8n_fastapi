@@ -255,50 +255,176 @@ except RuntimeError as e:
 
 app = FastAPI(title="n8n Execution Feedback API", version="1.0.0")
 
+# Configure CORS middleware - this must be added before other middleware
+cors_origins_env = os.getenv("CORS_ORIGINS")
+if cors_origins_env:
+    cors_origins = [origin.strip() for origin in cors_origins_env.split(",") if origin.strip()]
+else:
+    cors_origins = ["http://localhost:3000", "http://104.131.8.230:3000", "http://127.0.0.1:3000", "http://0.0.0.0:3000"]
 
+# Add CORS middleware
 app.add_middleware(
     CORSMiddleware,
-    allow_origins=[
-        "http://localhost:3000",
-        "http://104.131.8.230:3000",
-        "http://127.0.0.1:3000"
-    ],
+    allow_origins=cors_origins,
     allow_credentials=True,
     allow_methods=["GET", "POST", "PUT", "DELETE", "OPTIONS", "PATCH"],
-    allow_headers=["*"],  
-    expose_headers=["*"],  
+    allow_headers=["*"],
+    expose_headers=["*"],
     max_age=3600,
 )
 
-logger.info("CORS middleware configured with origins: %s", [
-    "http://localhost:3000",
-    "http://104.131.8.230:3000", 
-    "http://127.0.0.1:3000"
-])
-
-
+# Force CORS headers on all responses
 @app.middleware("http")
-async def add_cors_headers(request: Request, call_next):
-    """Ensure CORS headers are always added to responses"""
+async def force_cors_headers(request: Request, call_next):
+    """Force CORS headers on all responses"""
     response = await call_next(request)
     
-    
+    # Get the origin from the request
     origin = request.headers.get("origin")
-    if origin and origin in [
-        "http://localhost:3000",
-        "http://104.131.8.230:3000",
-        "http://127.0.0.1:3000"
-    ]:
+    
+    # Always prioritize the frontend origin from environment variable
+    frontend_url = os.getenv("FRONTEND_URL", "http://104.131.8.230:3000")
+    
+    # If origin is in our allowed list, use it, otherwise use the frontend URL
+    if origin and origin in cors_origins:
         response.headers["Access-Control-Allow-Origin"] = origin
     else:
-        response.headers["Access-Control-Allow-Origin"] = "http://104.131.8.230:3000"
+        response.headers["Access-Control-Allow-Origin"] = frontend_url
     
+    # Always set these CORS headers
     response.headers["Access-Control-Allow-Methods"] = "GET, POST, PUT, DELETE, OPTIONS, PATCH"
     response.headers["Access-Control-Allow-Headers"] = "*"
     response.headers["Access-Control-Allow-Credentials"] = "true"
     response.headers["Access-Control-Max-Age"] = "3600"
     
-    logger.info(f"Added CORS headers for origin: {origin}")
+    # Log CORS headers being set
+    logger.info(f"Force CORS: Setting headers for origin '{origin}' -> '{response.headers.get('Access-Control-Allow-Origin')}'")
+    
+    return response
+
+# Add explicit OPTIONS handler for all API routes to ensure preflight works
+@app.options("/api/{full_path:path}")
+async def api_options_handler(request: Request, full_path: str):
+    """Handle OPTIONS requests for all API routes"""
+    origin = request.headers.get("origin")
+    
+    # Always prioritize the frontend origin from environment variable
+    frontend_url = os.getenv("FRONTEND_URL", "http://104.131.8.230:3000")
+    
+    # If origin is in our allowed list, use it, otherwise use the frontend URL
+    if origin and origin in cors_origins:
+        allowed_origin = origin
+    else:
+        allowed_origin = frontend_url
+    
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": allowed_origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+# Add general OPTIONS handler for all other routes
+@app.options("/{full_path:path}")
+async def general_options_handler(request: Request, full_path: str):
+    """Handle OPTIONS requests for all other routes"""
+    origin = request.headers.get("origin")
+    
+    # Always prioritize the frontend origin from environment variable
+    frontend_url = os.getenv("FRONTEND_URL", "http://104.131.8.230:3000")
+    
+    # If origin is in our allowed list, use it, otherwise use the frontend URL
+    if origin and origin in cors_origins:
+        allowed_origin = origin
+    else:
+        allowed_origin = frontend_url
+    
+    return JSONResponse(
+        content={},
+        headers={
+            "Access-Control-Allow-Origin": allowed_origin,
+            "Access-Control-Allow-Methods": "GET, POST, PUT, DELETE, OPTIONS, PATCH",
+            "Access-Control-Allow-Headers": "*",
+            "Access-Control-Allow-Credentials": "true",
+            "Access-Control-Max-Age": "3600",
+        }
+    )
+
+# Add a simple health check endpoint to test CORS
+@app.get("/health")
+async def health_check():
+    """Health check endpoint"""
+    return {"status": "healthy", "message": "Server is running"}
+
+# Add a CORS test endpoint
+@app.get("/cors-test")
+async def cors_test():
+    """Test endpoint to verify CORS is working"""
+    return {"message": "CORS test successful", "cors_enabled": True}
+
+# Add a comprehensive CORS debug endpoint
+@app.get("/cors-debug")
+async def cors_debug(request: Request):
+    """Debug endpoint to show CORS configuration and request details"""
+    return {
+        "message": "CORS debug information",
+        "cors_origins": cors_origins,
+        "request_origin": request.headers.get("origin"),
+        "request_method": request.method,
+        "request_headers": dict(request.headers),
+        "cors_enabled": True
+    }
+
+# Add a test POST endpoint to verify CORS with POST requests
+@app.post("/test-post")
+async def test_post(request: Request):
+    """Test endpoint to verify CORS works with POST requests"""
+    body = await request.body()
+    return {
+        "message": "POST request successful",
+        "method": request.method,
+        "origin": request.headers.get("origin"),
+        "body_size": len(body),
+        "cors_enabled": True
+    }
+
+logger.info("CORS_ORIGINS environment variable: %s", repr(os.getenv("CORS_ORIGINS")))
+logger.info("CORS middleware configured with origins: %s", cors_origins)
+logger.info("Total CORS origins configured: %d", len(cors_origins))
+
+# Add middleware to log all incoming requests for debugging (excluding health checks)
+@app.middleware("http")
+async def log_requests(request: Request, call_next):
+    """Log all incoming requests for debugging, excluding health checks"""
+    # Skip logging for health check requests to reduce log spam
+    is_health_check = str(request.url.path) == "/health" and request.headers.get("user-agent", "").startswith("curl")
+    
+    if not is_health_check:
+        logger.info(f"Incoming request: {request.method} {request.url}")
+        logger.info(f"Origin header: {request.headers.get('origin', 'None')}")
+        logger.info(f"User-Agent: {request.headers.get('user-agent', 'None')}")
+    
+    response = await call_next(request)
+    
+    if not is_health_check:
+        logger.info(f"Response status: {response.status_code}")
+        logger.info(f"CORS headers in response:")
+        cors_headers = [
+            "Access-Control-Allow-Origin",
+            "Access-Control-Allow-Methods", 
+            "Access-Control-Allow-Headers",
+            "Access-Control-Allow-Credentials",
+            "Access-Control-Max-Age"
+        ]
+        for header in cors_headers:
+            value = response.headers.get(header)
+            if value:
+                logger.info(f"  {header}: {value}")
+    
     return response
 
 

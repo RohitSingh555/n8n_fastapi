@@ -244,3 +244,37 @@ class SocialMediaPostResponse(BaseModel):
         json_encoders = {
             datetime: lambda v: v.isoformat() if v else None
         } 
+
+
+# User schemas
+class UserBase(BaseModel):
+    username: str
+    name: str
+    email: str
+    is_active: bool = True
+
+class UserCreate(UserBase):
+    password: str
+
+class UserUpdate(BaseModel):
+    name: Optional[str] = None
+    email: Optional[str] = None
+    password: Optional[str] = None
+    is_active: Optional[bool] = None
+
+class UserResponse(UserBase):
+    id: int
+    created_at: datetime
+    updated_at: Optional[datetime] = None
+
+    class Config:
+        from_attributes = True
+
+class UserLogin(BaseModel):
+    username: str
+    password: str
+
+class UserPasswordChange(BaseModel):
+    username: str
+    current_password: str
+    new_password: str

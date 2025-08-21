@@ -1,4 +1,4 @@
-from sqlalchemy import Column, String, Text, DateTime, Integer
+from sqlalchemy import Column, String, Text, DateTime, Integer, Boolean
 from sqlalchemy.sql import func
 from .database import Base
 import uuid
@@ -92,3 +92,16 @@ class SocialMediaPost(Base):
     
     created_at = Column(DateTime(timezone=True), server_default=func.now())
     updated_at = Column(DateTime(timezone=True), onupdate=func.now()) 
+
+
+class User(Base):
+    __tablename__ = "users"
+
+    id = Column(Integer, primary_key=True, index=True)
+    username = Column(String(100), unique=True, index=True, nullable=False)
+    name = Column(String(255), nullable=False)
+    email = Column(String(255), unique=True, index=True, nullable=False)
+    password = Column(String(255), nullable=False)  # In production, this should be hashed
+    is_active = Column(Boolean, default=True)
+    created_at = Column(DateTime(timezone=True), server_default=func.now())
+    updated_at = Column(DateTime(timezone=True), onupdate=func.now())

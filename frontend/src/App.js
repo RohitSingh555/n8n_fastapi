@@ -1,36 +1,78 @@
 import React, { useState, useEffect, useCallback } from 'react';
 import { BrowserRouter as Router, Routes, Route, useParams, useNavigate } from 'react-router-dom';
-import { FiSend, FiCheck, FiLinkedin, FiTwitter, FiImage, FiEdit3, FiEye } from 'react-icons/fi';
+import { FiSend, FiCheck, FiLinkedin, FiTwitter, FiImage, FiEdit3, FiEye, FiLogOut, FiUser } from 'react-icons/fi';
 
 import Modal from './components/Modal';
 import SuccessPage from './components/SuccessPage';
 import TabContent from './components/TabContent';
 import SocialMediaForm from './components/SocialMediaForm';
+import LandingPage from './components/LandingPage';
+import Login from './components/Login';
+import ProtectedRoute from './components/ProtectedRoute';
 import logo from './assets/logo.png';
 import API_BASE_URL from './config';
 
 
 
 function App() {
+  const [isAuthenticated, setIsAuthenticated] = useState(false);
+  const [currentUser, setCurrentUser] = useState(null);
+
+  useEffect(() => {
+    // Check if user is already logged in on app load
+    const loggedInUser = localStorage.getItem('loggedInUser');
+    if (loggedInUser) {
+      const user = JSON.parse(loggedInUser);
+      setCurrentUser(user);
+      setIsAuthenticated(true);
+    }
+  }, []);
+
+  const handleLogin = (user) => {
+    setCurrentUser(user);
+    setIsAuthenticated(true);
+  };
+
+  const handleLogout = () => {
+    localStorage.removeItem('loggedInUser');
+    setCurrentUser(null);
+    setIsAuthenticated(false);
+  };
+
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<FeedbackForm />} />
-        <Route path="/feedback/:submissionId" element={<FeedbackForm />} />
-        <Route path="/feedback/:submissionId/:activeTab" element={<FeedbackForm />} />
-        <Route path="/success/:submissionId" element={<SuccessPageWrapper />} />
-        <Route path="/social-media" element={<SocialMediaForm />} />
+        <Route path="/" element={<LandingPage />} />
+        <Route path="/login" element={<Login onLogin={handleLogin} />} />
+        <Route path="/feedback" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <FeedbackForm currentUser={currentUser} onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
+        <Route path="/feedback/:submissionId" element={<FeedbackForm currentUser={currentUser} onLogout={handleLogout} />} />
+        <Route path="/feedback/:submissionId/:activeTab" element={<FeedbackForm currentUser={currentUser} onLogout={handleLogout} />} />
+        <Route path="/success/:submissionId" element={<SuccessPageWrapper currentUser={currentUser} onLogout={handleLogout} />} />
+        <Route path="/social-media" element={
+          <ProtectedRoute isAuthenticated={isAuthenticated}>
+            <SocialMediaForm currentUser={currentUser} onLogout={handleLogout} />
+          </ProtectedRoute>
+        } />
       </Routes>
     </Router>
   );
 }
 
-function SuccessPageWrapper() {
+function SuccessPageWrapper({ currentUser, onLogout }) {
   const { submissionId } = useParams();
   const navigate = useNavigate();
   
   const handleReset = () => {
-    navigate('/');
+    // If user is logged in, go to feedback form, otherwise go to landing page
+    if (currentUser && onLogout) {
+      navigate('/feedback');
+    } else {
+      navigate('/');
+    }
   };
   
   const handleContinueEditing = () => {
@@ -46,7 +88,7 @@ function SuccessPageWrapper() {
   );
 }
 
-function FeedbackForm() {
+function FeedbackForm({ currentUser, onLogout }) {
   const { submissionId: urlSubmissionId, activeTab: urlActiveTab } = useParams();
   const navigate = useNavigate();
   
@@ -156,13 +198,14 @@ To all the healthcare providers out there: what's the biggest challenge AI could
   // Load feedback from URL if submissionId is provided
   useEffect(() => {
     if (urlSubmissionId && urlSubmissionId !== submissionId) {
+      setSubmissionId(urlSubmissionId);
       loadExistingFeedback(urlSubmissionId);
     }
     if (urlActiveTab && ['linkedin', 'twitter', 'images'].includes(urlActiveTab)) {
       setActiveTab(urlActiveTab);
       setVisitedTabs(prev => new Set([...prev, urlActiveTab]));
     }
-  }, [urlSubmissionId, urlActiveTab]);
+  }, [urlSubmissionId, urlActiveTab, submissionId]);
 
   // Auto-clear form fields on page load to show the mutual exclusion notice
   useEffect(() => {
@@ -182,19 +225,6 @@ To all the healthcare providers out there: what's the biggest challenge AI could
       }));
     }
   }, []); // Empty dependency array means this runs once on mount
-
-  useEffect(() => {
-    console.log('URL update effect triggered:', { submissionId, activeTab });
-    if (submissionId) {
-      if (activeTab === 'linkedin') {
-        navigate(`/feedback/${submissionId}`);
-      } else {
-        navigate(`/feedback/${submissionId}/${activeTab}`);
-      }
-    } else {
-      navigate('/');
-    }
-  }, [submissionId, activeTab, navigate]);
 
   // Validate tab completion
   const validateTab = useCallback((tabName) => {
@@ -804,6 +834,30 @@ To all the healthcare providers out there: what's the biggest challenge AI could
     <div className="min-h-screen bg-gradient-to-br from-[#E8EBF5] to-[#A8B3D4]">
       <div className="container mx-auto px-4 sm:px-6 lg:px-8 py-4 sm:py-8">
         <div className="max-w-7xl mx-auto">
+          {/* User Header - Only show when user is logged in */}
+          {currentUser && onLogout && (
+            <div className="bg-[#FFFFFF] border border-[#D5D9E4] rounded-xl p-4 mb-6 shadow-sm">
+              <div className="flex justify-between items-center">
+                <div className="flex items-center space-x-3">
+                  <div className="w-10 h-10 bg-[#5A67A5] rounded-full flex items-center justify-center">
+                    <FiUser className="w-5 h-5 text-white" />
+                  </div>
+                  <div>
+                    <p className="text-[#3E3E3E] font-medium">{currentUser.name}</p>
+                    <p className="text-[#5A67A5] text-sm">{currentUser.email}</p>
+                  </div>
+                </div>
+                <button
+                  onClick={onLogout}
+                  className="flex items-center space-x-2 px-4 py-2 bg-[#5A67A5] text-white rounded-lg hover:bg-[#4A5A95] transition-colors"
+                >
+                  <FiLogOut className="w-4 h-4" />
+                  <span>Logout</span>
+                </button>
+              </div>
+            </div>
+          )}
+          
           {/* Header */}
           <header className="text-center mb-8 sm:mb-12">
             {/* Logo */}
@@ -828,18 +882,29 @@ To all the healthcare providers out there: what's the biggest challenge AI could
               Collect and manage feedback for n8n execution results
             </p>
             <div className="flex justify-center gap-4 mt-6">
-              <button 
-                onClick={() => navigate('/')}
-                className="px-4 py-2 bg-[#5A67A5] text-white rounded-xl hover:bg-[#4A5A95] transition-all duration-200 text-sm shadow-md"
-              >
-                Feedback Form
-              </button>
-              <button 
-                onClick={() => navigate('/social-media')}
-                className="px-4 py-2 bg-[#A8B3D4] text-[#3E3E3E] rounded-xl hover:bg-[#9BA6C7] transition-all duration-200 text-sm"
-              >
-                Social Media Form
-              </button>
+                            {currentUser && onLogout ? (
+                <>
+                  <button 
+                    onClick={() => navigate('/feedback')}
+                    className="px-4 py-2 bg-[#5A67A5] text-white rounded-xl hover:bg-[#4A5A95] transition-all duration-200 text-sm shadow-md"
+                  >
+                    Feedback Form
+                  </button>
+                  <button 
+                    onClick={() => navigate('/social-media')}
+                    className="px-4 py-2 bg-[#A8B3D4] text-[#3E3E3E] rounded-xl hover:bg-[#9BA6C7] transition-all duration-200 text-sm"
+                  >
+                    Social Media Form
+                  </button>
+                </>
+              ) : (
+                <button 
+                  onClick={() => navigate('/login')}
+                  className="px-4 py-2 bg-[#5A67A5] text-white rounded-xl hover:bg-[#4A5A95] transition-all duration-200 text-sm shadow-md"
+                >
+                  Login to Access Tools
+                </button>
+              )}
             </div>
           </header>
 

@@ -15,7 +15,7 @@ from ..database import get_db
 logger = logging.getLogger(__name__)
 
 
-router = APIRouter(prefix="/api", tags=["utils"])
+router = APIRouter(tags=["utils"])
 
 @router.get("/")
 def read_root():

@@ -9,6 +9,9 @@ services:
     environment:
       DATABASE_URL: sqlite:///app/n8n_feedback.db
       FRONTEND_URL: http://104.131.8.230:3000
+      CORS_ORIGINS: "http://localhost:3000,http://104.131.8.230:3000,http://127.0.0.1:3000,http://0.0.0.0:3000"
+      PYTHONPATH: "/app"
+      PYTHONUNBUFFERED: "1"
     ports:
       - "0.0.0.0:8000:8000"
     volumes:

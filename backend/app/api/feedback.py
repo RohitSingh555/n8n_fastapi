@@ -1,7 +1,7 @@
-from fastapi import APIRouter, Depends, HTTPException, Request
+from fastapi import APIRouter, Depends, HTTPException, Query, UploadFile, File, Form, Body, Request
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from typing import List
+from typing import List, Optional, Union
 import uuid
 import logging
 import traceback
@@ -19,11 +19,9 @@ from ..main import (
     clean_string_content
 )
 
-
 logger = logging.getLogger(__name__)
 
-
-router = APIRouter(prefix="/api/feedback", tags=["feedback"])
+router = APIRouter(prefix="/feedback", tags=["feedback"])
 
 @router.post("", response_model=schemas.FeedbackSubmissionCreateResponse)
 def create_feedback_submission(

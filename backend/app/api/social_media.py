@@ -1,11 +1,14 @@
-from fastapi import APIRouter, Depends, HTTPException
+from fastapi import APIRouter, Depends, HTTPException, UploadFile, File, Form, Body
 from sqlalchemy.orm import Session
 from sqlalchemy.exc import SQLAlchemyError, IntegrityError
-from typing import List, Optional
+from typing import List, Optional, Union
 import uuid
 import logging
 import traceback
 from datetime import datetime
+import json
+import re
+import os
 
 from .. import models, schemas
 from ..database import get_db
@@ -14,11 +17,9 @@ from ..main import (
     handle_image_url_storage
 )
 
-
 logger = logging.getLogger(__name__)
 
-
-router = APIRouter(prefix="/api/social-media-posts", tags=["social-media"])
+router = APIRouter(prefix="/social-media-posts", tags=["social-media"])
 
 @router.post("", response_model=schemas.SocialMediaPostResponse)
 def create_social_media_post(

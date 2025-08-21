@@ -37,5 +37,12 @@ echo "✅ SQLite database: Ready"
 echo "✅ Alembic migrations: Attempted"
 echo "🚀 Starting FastAPI server..."
 
-# Start the FastAPI server
-exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 
+# Start the FastAPI server with CORS-friendly settings
+echo "Starting FastAPI server with CORS configuration..."
+echo "CORS_ORIGINS: '$CORS_ORIGINS'"
+echo "FRONTEND_URL: '$FRONTEND_URL'"
+echo "PYTHONPATH: '$PYTHONPATH'"
+echo "All environment variables:"
+env | grep -E "(CORS|FRONTEND|PYTHON)" | sort
+
+exec uvicorn app.main:app --host 0.0.0.0 --port 8000 --workers 2 --log-level info --reload 
