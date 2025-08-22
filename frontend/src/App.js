@@ -42,7 +42,7 @@ function App() {
   return (
     <Router>
       <Routes>
-        <Route path="/" element={<LandingPage />} />
+        <Route path="/" element={<LandingPage isAuthenticated={isAuthenticated} currentUser={currentUser} onLogout={handleLogout} />} />
         <Route path="/login" element={<Login onLogin={handleLogin} />} />
         <Route path="/feedback" element={
           <ProtectedRoute isAuthenticated={isAuthenticated}>

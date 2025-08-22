@@ -6,11 +6,12 @@ import {
   FiAward,
   FiHeart,
   FiTarget,
-  FiUser
+  FiUser,
+  FiLogOut
 } from 'react-icons/fi';
 import logo from '../assets/logo_landing_page.png';
 
-const LandingPage = () => {
+const LandingPage = ({ isAuthenticated, currentUser, onLogout }) => {
   return (
     <div className="min-h-screen bg-white text-gray-800">
       {/* Navigation */}
@@ -28,17 +29,35 @@ const LandingPage = () => {
             <div className="flex items-center space-x-6">
               <Link 
                 to="/social-media" 
-                className="text-gray-600 hover:text-gray-800 transition-colors"
+                className="text-gray-600 hover:text-gray-800 hover:bg-gray-100 px-3 py-2 rounded-lg transition-all duration-200 font-medium"
               >
                 Social Media
               </Link>
-                             <Link
-                 to="/login"
-                 className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
-               >
-                <FiUser className="w-4 h-4" />
-                <span>Login</span>
-              </Link>
+              {isAuthenticated ? (
+                <div className="flex items-center space-x-4">
+                  <div className="flex items-center space-x-2">
+                    <div className="w-8 h-8 bg-[#878eff] rounded-full flex items-center justify-center">
+                      <FiUser className="w-4 h-4 text-white" />
+                    </div>
+                    <span className="text-gray-800 font-medium">{currentUser?.name || 'User'}</span>
+                  </div>
+                  <button
+                    onClick={onLogout}
+                    className="bg-gray-600 hover:bg-gray-700 text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                  >
+                    <FiLogOut className="w-4 h-4" />
+                    <span>Logout</span>
+                  </button>
+                </div>
+              ) : (
+                <Link
+                  to="/login"
+                  className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-4 py-2 rounded-lg transition-colors flex items-center space-x-2"
+                >
+                  <FiUser className="w-4 h-4" />
+                  <span>Login</span>
+                </Link>
+              )}
             </div>
           </div>
         </div>
@@ -58,51 +77,48 @@ const LandingPage = () => {
                 />
               </div>
               
-                             <div className="flex items-center justify-center mb-6">
-                 <FiAward className="w-8 h-8 text-[#878eff] mr-3" />
-                 <span className="text-lg text-[#878eff] font-semibold">2023 Geneva Innovation Award Winner</span>
-               </div>
-                             <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6">
-                 Transform Your Social Media
-                 <span className="text-[#878eff] block">with AI-Powered Intelligence</span>
-               </h1>
-               <p className="text-xl text-gray-800 max-w-4xl mx-auto mb-8 leading-relaxed">
-                 Stop juggling multiple platforms and struggling with content creation. Our intelligent social media platform automatically generates engaging posts, handles multi-platform publishing, and learns from your feedback to deliver better results every time. Focus on your business while we handle your social presence.
-               </p>
+              <div className="flex items-center justify-center mb-6">
+                <FiAward className="w-8 h-8 text-[#878eff] mr-3" />
+                <span className="text-lg text-[#878eff] font-semibold">2023 Geneva Innovation Award Winner</span>
+              </div>
+              <h1 className="text-5xl md:text-6xl font-bold leading-tight mb-6">
+                Transform Your Social Media
+                <span className="text-[#878eff] block">with AI-Powered Intelligence</span>
+              </h1>
+              <p className="text-xl text-gray-800 max-w-4xl mx-auto mb-8 leading-relaxed">
+                Stop juggling multiple platforms and struggling with content creation. Our intelligent social media platform automatically generates engaging posts, handles multi-platform publishing, and learns from your feedback to deliver better results every time. Focus on your business while we handle your social presence.
+              </p>
 
               <div className="flex flex-col sm:flex-row gap-4 justify-center items-center mb-8">
-                                 <Link
-                   to="/login"
-                   className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105 flex items-center space-x-3"
-                 >
-                  <FiUser className="w-5 h-5" />
-                  <span>Sign In to Access Tools</span>
-                </Link>
+                {isAuthenticated ? (
+                  <Link
+                    to="/social-media"
+                    className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105 flex items-center space-x-3"
+                  >
+                    <FiUser className="w-5 h-5" />
+                    <span>Go to Social Media</span>
+                  </Link>
+                ) : (
+                  <Link
+                    to="/login"
+                    className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105 flex items-center space-x-3"
+                  >
+                    <FiUser className="w-5 h-5" />
+                    <span>Sign In to Access Tools</span>
+                  </Link>
+                )}
               </div>
 
-              <div className="flex flex-wrap justify-center gap-6 text-sm text-gray-800">
-                <div className="flex items-center space-x-2">
-                  <FiCheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Approved in Brazil</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <FiCheckCircle className="w-4 h-4 text-green-500" />
-                  <span>Available in Chile</span>
-                </div>
-                <div className="flex items-center space-x-2">
-                  <FiTarget className="w-4 h-4 text-yellow-500" />
-                  <span>Not approved by the FDA for use in the US</span>
-                </div>
-              </div>
+              
             </div>
           </div>
         </div>
         
-                 {/* Background decoration */}
-         <div className="absolute inset-0 -z-10">
-           <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-[#878eff]/20 rounded-full blur-3xl"></div>
-           <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#878eff]/10 rounded-full blur-3xl"></div>
-         </div>
+        {/* Background decoration */}
+        <div className="absolute inset-0 -z-10">
+          <div className="absolute top-1/4 left-1/4 w-72 h-72 bg-[#878eff]/20 rounded-full blur-3xl"></div>
+          <div className="absolute bottom-1/4 right-1/4 w-96 h-96 bg-[#878eff]/10 rounded-full blur-3xl"></div>
+        </div>
       </section>
 
       {/* Crisis Section */}
@@ -187,7 +203,7 @@ const LandingPage = () => {
       </section>
 
       {/* How It Works Section */}
-      <section className="py-20 relative">
+      {/* <section className="py-20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
@@ -198,52 +214,14 @@ const LandingPage = () => {
             </p>
             <h3 className="text-2xl font-semibold mb-8">How it works</h3>
             <p className="text-xl text-[#878eff] font-semibold mb-12">Create. Automate. Optimize.</p>
-            <p className="text-gray-800 text-lg max-w-3xl mx-auto mb-12">
-              Our workflow is simple: Choose your content type, let our AI generate and optimize posts, and watch as your content automatically publishes across all platforms while collecting valuable feedback.
-            </p>
+            
           </div>
+          </div>  
           
-          <div className="grid md:grid-cols-3 gap-8">
-            {[
-              {
-                number: "1",
-                title: "Scan",
-                description: "Use existing standard ultrasound scans—the same ones already taken—easily and securely uploaded into our cloud AI."
-              },
-              {
-                number: "2",
-                title: "Analyze",
-                description: "Within seconds, our AI processes the images, detecting subtle patterns invisible to the human eye."
-              },
-              {
-                number: "3",
-                title: "Forecast",
-                description: "You receive a personalized delivery date estimate based on your ultrasound. No new machines or equipment, no workflow changes. It's just simple, seamless, and smart."
-              }
-            ].map((step, index) => (
-              <div 
-                key={index}
-                className="text-center"
-              >
-                <div className="w-16 h-16 bg-primary rounded-full flex items-center justify-center mx-auto mb-4 text-2xl font-bold text-white">
-                  {step.number}
-                </div>
-                <h3 className="text-xl font-semibold mb-2">{step.title}</h3>
-                <p className="text-gray-800">{step.description}</p>
-              </div>
-            ))}
-          </div>
-          
-          <div className="text-center mt-12 p-6 bg-surface border border-border/20 rounded-xl max-w-2xl mx-auto">
-            <p className="text-lg italic  mb-3">
-              "Delivery Date AI™ is like having a second pair of expert eyes on every scan."
-            </p>
-          </div>
-        </div>
-      </section>
+      </section> */}
 
       {/* Clinical Validation Section */}
-      <section className="py-20 relative">
+      {/* <section className="py-20 relative">
         <div className="max-w-7xl mx-auto px-4 sm:px-6 lg:px-8">
           <div className="text-center mb-16">
             <h2 className="text-3xl md:text-4xl font-bold mb-6">
@@ -254,43 +232,9 @@ const LandingPage = () => {
             </p>
           </div>
           
-          <div className="grid md:grid-cols-2 gap-12 items-center">
-            <div>
-              <h3 className="text-2xl font-semibold mb-6">Regulatory Approvals & Recognition</h3>
-              <div className="space-y-4">
-                <div className="flex items-center space-x-3">
-                  <FiCheckCircle className="w-5 h-5 text-green-400" />
-                  <span>Brazil (ANVISA)</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <FiCheckCircle className="w-5 h-5 text-green-400" />
-                  <span>Chile</span>
-                </div>
-                <div className="flex items-center space-x-3">
-                  <FiTarget className="w-5 h-5 text-yellow-400" />
-                  <span>USA (Pending FDA Approval)</span>
-                </div>
-              </div>
-            </div>
-            
-            <div className="bg-surface border border-border/20 rounded-xl p-8">
-              <h3 className="text-2xl font-semibold mb-6">University of Kentucky PAIR Study</h3>
-              <p className=" mb-6">The largest independent validation of AI-powered delivery date prediction</p>
-              <div className="grid grid-cols-2 gap-6">
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary mb-2">5,714</div>
-                  <div className=" text-sm">Patients</div>
-                </div>
-                <div className="text-center">
-                  <div className="text-3xl font-bold text-primary mb-2">19,940</div>
-                  <div className=" text-sm">Exams</div>
-                </div>
-              </div>
-              <p className="text-sm  mt-4">University of Kentucky. Independent Validation.</p>
-            </div>
-          </div>
+          
         </div>
-      </section>
+      </section> */}
 
       {/* CTA Section */}
       <section className="py-20 relative">
@@ -304,13 +248,23 @@ const LandingPage = () => {
             </p>
             
             <div className="flex flex-col sm:flex-row gap-4 justify-center">
-              <Link 
-                to="/login"
-                className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center space-x-3"
-              >
-                <FiUser className="w-5 h-5" />
-                <span>Sign In Now</span>
-              </Link>
+              {isAuthenticated ? (
+                <Link 
+                  to="/social-media"
+                  className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center space-x-3"
+                >
+                  <FiUser className="w-5 h-5" />
+                  <span>Go to Social Media</span>
+                </Link>
+              ) : (
+                <Link 
+                  to="/login"
+                  className="bg-[#878eff] hover:bg-[#6b6eff] text-white px-8 py-4 rounded-xl text-lg font-semibold transition-all transform hover:scale-105 flex items-center justify-center space-x-3"
+                >
+                  <FiUser className="w-5 h-5" />
+                  <span>Sign In Now</span>
+                </Link>
+              )}
             </div>
 
           </div>

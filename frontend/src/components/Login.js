@@ -45,21 +45,21 @@ const Login = ({ onLogin }) => {
           { 
             id: 1, 
             name: 'Bob', 
-            email: 'bob@example.com',
+            email: 'Bob@Ultrasound.AI ',
             username: 'bob',
             is_active: true
           },
           { 
             id: 2, 
             name: 'Leah', 
-            email: 'leah@example.com',
+            email: 'Leah.Calahan@Ultrasound.AI',
             username: 'leah',
             is_active: true
           },
           { 
             id: 3, 
             name: 'Matthew', 
-            email: 'matthew@example.com',
+            email: 'Matthew@AutomationConsultingServices.org',
             username: 'matthew',
             is_active: true
           }
@@ -73,21 +73,21 @@ const Login = ({ onLogin }) => {
         { 
           id: 1, 
           name: 'Bob', 
-          email: 'bob@example.com',
+          email: 'Bob@Ultrasound.AI ',
           username: 'bob',
           is_active: true
         },
         { 
           id: 2, 
           name: 'Leah', 
-          email: 'leah@example.com',
+          email: 'Leah.Calahan@Ultrasound.AI',
           username: 'leah',
           is_active: true
         },
         { 
           id: 3, 
           name: 'Matthew', 
-          email: 'matthew@example.com',
+          email: 'Matthew@AutomationConsultingServices.org',
           username: 'matthew',
           is_active: true
         }
